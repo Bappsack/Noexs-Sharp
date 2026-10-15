@@ -521,6 +521,64 @@ public sealed class Debugger : IDisposable
         }
     }
 
+    private const int OptionCompression = 1;
+    private const int OptionDoubleBuffering = 2;
+
+    /// <summary>Sysmodule time and bytes for memory reads (see <see cref="GetTransferStats"/>).</summary>
+    public sealed record TransferStats(long ReadNs, long CompressNs, long WaitNs, long SendNs, long MemoryBytes, long LinkBytes);
+
+    /// <summary>The sysmodule RLE-compresses memory it sends (as last set with <see cref="SetTransferOptions"/>).</summary>
+    public bool Compression { get; private set; } = true;
+
+    /// <summary>The sysmodule sends one buffer while it fills the next.</summary>
+    public bool DoubleBuffering { get; private set; }
+
+    /// <summary>Sets the sysmodule's transfer options for this connection; returns once they are in effect.</summary>
+    public void SetTransferOptions(bool compression, bool doubleBuffering)
+    {
+        Acquire();
+        try
+        {
+            conn.WriteCommand(COMMAND_SET_OPTIONS);
+            conn.WriteInt((compression ? OptionCompression : 0) | (doubleBuffering ? OptionDoubleBuffering : 0));
+            conn.Flush();
+            int effective = conn.ReadInt();
+            Result rc = conn.ReadResult();
+            if (rc.Failed)
+            {
+                throw new ConnectionException(rc);
+            }
+            Compression = (effective & OptionCompression) != 0;
+            DoubleBuffering = (effective & OptionDoubleBuffering) != 0;
+        }
+        finally
+        {
+            Release();
+        }
+    }
+
+    /// <summary>Where the sysmodule spent its time on memory reads since the last call (the counters reset).</summary>
+    public TransferStats GetTransferStats()
+    {
+        Acquire();
+        try
+        {
+            conn.WriteCommand(COMMAND_TRANSFER_STATS);
+            conn.Flush();
+            long[] v = new long[6];
+            for (int i = 0; i < v.Length; i++)
+            {
+                v[i] = conn.ReadLong();
+            }
+            conn.ReadResult(); // always 0
+            return new TransferStats(v[0], v[1], v[2], v[3], v[4], v[5]);
+        }
+        finally
+        {
+            Release();
+        }
+    }
+
     public long GetCurrentPid()
     {
         Acquire();

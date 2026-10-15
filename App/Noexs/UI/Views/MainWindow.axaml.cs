@@ -222,6 +222,7 @@ public partial class MainWindow : Window, IController
         DebuggerStatus? status = debugger.GetStatus();
         SetTitle(status?.Status);
         SetStatus("Connected (noexs " + debugger.ServerVersion + ")");
+        ApplyTransferOptions();
         if (connectionType.SelectedItem is ConnectionType.NETWORK)
         {
             try
@@ -286,6 +287,30 @@ public partial class MainWindow : Window, IController
             menu.Items.Add(item);
         }
         menu.Open(ipHistoryBtn);
+    }
+
+    /// <summary>Sends the dump transfer options (Utils tab) to the sysmodule, if connected.</summary>
+    public void ApplyTransferOptions()
+    {
+        if (!debugger.Connected)
+        {
+            return;
+        }
+        bool compression = Settings.GetDumpCompression();
+        bool doubleBuffering = Settings.GetDoubleBuffering();
+        Debugger d = debugger;
+        Task.Run(() =>
+        {
+            try
+            {
+                d.SetTransferOptions(compression, doubleBuffering);
+                Log.Info($"transfer options: compression {d.Compression}, double buffering {d.DoubleBuffering}");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "setting the transfer options");
+            }
+        });
     }
 
     public void OnDisconnect()

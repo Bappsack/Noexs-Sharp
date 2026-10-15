@@ -30,4 +30,10 @@ public static class Commands
 
     /// <summary>Name of an installed game from the console.</summary>
     public const int COMMAND_GET_TITLE_NAME = 0x16;
+
+    /// <summary>Transfer options: compression and double buffering (flags).</summary>
+    public const int COMMAND_SET_OPTIONS = 0x17;
+
+    /// <summary>Transfer statistics of the sysmodule since the last call.</summary>
+    public const int COMMAND_TRANSFER_STATS = 0x18;
 }

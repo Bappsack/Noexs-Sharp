@@ -13,6 +13,10 @@ public partial class UtilsTab : UserControl, IController
     public UtilsTab()
     {
         InitializeComponent();
+        compressionBox.IsChecked = Settings.GetDumpCompression();
+        doubleBufferBox.IsChecked = Settings.GetDoubleBuffering();
+        compressionBox.IsCheckedChanged += (_, _) => OnTransferOptionChanged();
+        doubleBufferBox.IsCheckedChanged += (_, _) => OnTransferOptionChanged();
         deviceTree.SelectionChanged += (_, _) =>
         {
             if (deviceTree.SelectedItem is TreeViewItem { Tag: UsbDevice d })
@@ -59,6 +63,13 @@ public partial class UtilsTab : UserControl, IController
     public void OnDisconnect()
     {
         logPane.IsEnabled = false;
+    }
+
+    private void OnTransferOptionChanged()
+    {
+        Settings.SetDumpCompression(compressionBox.IsChecked == true);
+        Settings.SetDoubleBuffering(doubleBufferBox.IsChecked == true);
+        mc.ApplyTransferOptions();
     }
 
     private void OnRefreshLog(object? sender, RoutedEventArgs e)

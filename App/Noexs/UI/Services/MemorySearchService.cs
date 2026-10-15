@@ -379,6 +379,14 @@ public sealed class MemorySearchService : BackgroundService<SearchResult>
         private MemoryDump? CreateDump(SearchResult result, DumpRegionSupplier sup)
         {
             LastDumpSummary = null;
+            try
+            {
+                conn.GetTransferStats(); // start the Switch's counters from zero
+            }
+            catch (ConnectionException e) when (conn.Connected)
+            {
+                Log.Info("transfer stats: " + e.Message);
+            }
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             long linkStart = conn.LinkBytesRead;
             bool resume = conn.GetStatus() == DebuggerStatus.PAUSED;
@@ -457,6 +465,17 @@ public sealed class MemorySearchService : BackgroundService<SearchResult>
             {
                 LastDumpSummary = DumpSummary(read, conn.LinkBytesRead - linkStart, stopwatch.Elapsed.TotalSeconds,
                     conn.Raw() is Noexs.IO.Usb.BulkConnection ? "USB" : "Wi-Fi");
+                try
+                {
+                    Debugger.TransferStats t = conn.GetTransferStats();
+                    LastDumpSummary += FormattableString.Invariant(
+                        $" | Switch: read {t.ReadNs / 1e9:0.0} s, compress {t.CompressNs / 1e9:0.0} s, waiting for link {t.WaitNs / 1e9:0.0} s") +
+                        $" (compression {(conn.Compression ? "on" : "off")}, double buffering {(conn.DoubleBuffering ? "on" : "off")})";
+                }
+                catch (ConnectionException e) when (conn.Connected)
+                {
+                    Log.Info("transfer stats: " + e.Message);
+                }
                 Log.Info("dump: " + LastDumpSummary);
             }
             return IsCancelled ? null : dump;

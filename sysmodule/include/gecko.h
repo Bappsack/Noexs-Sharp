@@ -43,11 +43,22 @@ namespace Gecko {
         u8 stage[GECKO_STAGE_SIZE];    // memory read staging
     };
 
+    /// Transfer options a client can set with command 0x17 (bit flags).
+    enum Option {
+        OptionCompression     = 1, // RLE-compress memory chunks (otherwise sent raw)
+        OptionDoubleBuffering = 2, // send one buffer while the next is filled
+    };
+
     /// One client session on one transport.
     struct Context {
         Transport *conn;
         Shared *shared;
         bool stop; // set by the disconnect command
+        bool compress = true;
+        // memory read statistics since the last command 0x18
+        u64 readTicks = 0;
+        u64 compressTicks = 0;
+        u64 memBytes = 0;
     };
 };
 

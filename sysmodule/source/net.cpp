@@ -17,6 +17,7 @@ using namespace Gecko;
 
 static u8 g_tcpIn[TCP_IN_SIZE];
 static u8 g_tcpOut[TCP_OUT_SIZE];
+static u8 g_tcpOut2[TCP_OUT_SIZE]; // second buffer for double buffering
 
 static void kill(int &fd) {
     if (fd != DISCONNECTED_FD) {
@@ -26,10 +27,11 @@ static void kill(int &fd) {
     }
 }
 
-TcpTransport::TcpTransport() : Transport(g_tcpIn, TCP_IN_SIZE, g_tcpOut, TCP_OUT_SIZE), sockfd(DISCONNECTED_FD),
+TcpTransport::TcpTransport() : Transport(g_tcpIn, TCP_IN_SIZE, g_tcpOut, g_tcpOut2, TCP_OUT_SIZE), sockfd(DISCONNECTED_FD),
     error(0), errorCall("") {}
 
 TcpTransport::~TcpTransport() {
+    stopSender();
     disconnect();
 }
 

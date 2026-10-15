@@ -344,6 +344,7 @@ static void startDebugThread() {
 /// Serves commands from one client until it disconnects or the transport fails.
 static void serveSession(Gecko::Transport& conn, int firstCmd) {
     Gecko::Context ctx = { &conn, &g_Shared, false };
+    conn.setDoubleBuffering(false); // per-connection options start from the defaults
     sessionBegin(g_Shared);
     int cmd = firstCmd;
     while (!g_Shared.exit && !ctx.stop && cmd >= 0) {

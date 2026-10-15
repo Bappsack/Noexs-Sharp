@@ -34,6 +34,17 @@
  * transport's output buffer; if RLE doesn't pay off it is sent raw instead.
  */
 static Result writeCompressed(Gecko::Context &ctx, const u8 *src, u32 len) {
+    if (!ctx.compress) {
+        u8 *out = ctx.conn->reserve(5 + len);
+        if (!out) {
+            return IOFAIL;
+        }
+        out[0] = 0;
+        memcpy(out + 1, &len, 4);
+        memcpy(out + 5, src, len);
+        ctx.conn->commit(5 + len);
+        return 0;
+    }
     const u32 header = 1 + 4 + 4;
     u8 *out = ctx.conn->reserve(header + len * 2);
     if (!out) {
@@ -131,16 +142,29 @@ static Result _readmem(Gecko::Context &ctx) {
         // one svc call per 64 KiB block; if the block fails (e.g. it touches an unmapped page)
         // fall back to per-chunk reads so the reported error position matches the old behaviour
         u32 block = size < GECKO_STAGE_SIZE ? size : GECKO_STAGE_SIZE;
+        u64 t0 = armGetSystemTick();
         bool blockOk = R_SUCCEEDED(DBG.readMem(stage, addr, block));
+        ctx.readTicks += armGetSystemTick() - t0;
         for (u32 off = 0; off < block; off += GECKO_BUFFER_SIZE) {
             u32 len = block - off < GECKO_BUFFER_SIZE ? block - off : GECKO_BUFFER_SIZE;
             u8 *src = stage + off;
-            rc = blockOk ? 0 : DBG.readMem(src, addr + off, len);
+            if (!blockOk) {
+                t0 = armGetSystemTick();
+                rc = DBG.readMem(src, addr + off, len);
+                ctx.readTicks += armGetSystemTick() - t0;
+            } else {
+                rc = 0;
+            }
             WRITE_CHECKED(ctx, rc);
             if (R_FAILED(rc)) {
                 return rc;
             }
+            // compression time without the waits for the link that happen when the buffer is full
+            t0 = armGetSystemTick();
+            u64 stall0 = ctx.conn->stallTicks();
             rc = writeCompressed(ctx, src, len);
+            ctx.compressTicks += (armGetSystemTick() - t0) - (ctx.conn->stallTicks() - stall0);
+            ctx.memBytes += len;
             if (R_FAILED(rc)) {
                 return rc;
             }
@@ -402,6 +426,30 @@ static Result _get_title_name(Gecko::Context &ctx) {
     return rc;
 }
 
+//0x17: transfer options (in: u32 flags; out: u32 flags now in effect)
+static Result _set_options(Gecko::Context &ctx) {
+    u32 flags;
+    READ_CHECKED(ctx, flags);
+    ctx.compress = (flags & Gecko::OptionCompression) != 0;
+    bool doubleBuffering = ctx.conn->setDoubleBuffering((flags & Gecko::OptionDoubleBuffering) != 0);
+    u32 effective = (ctx.compress ? Gecko::OptionCompression : 0) | (doubleBuffering ? Gecko::OptionDoubleBuffering : 0);
+    WRITE_CHECKED(ctx, effective);
+    return 0;
+}
+
+//0x18: transfer statistics since the last call (out: u64 read ns, compress ns, wait-for-link ns,
+//      send ns, memory bytes, bytes sent), then reset
+static Result _transfer_stats(Gecko::Context &ctx) {
+    ctx.conn->drain(); // count everything that is still in flight
+    Gecko::Transport::Stats t = ctx.conn->takeStats();
+    u64 values[6] = {
+        armTicksToNs(ctx.readTicks), armTicksToNs(ctx.compressTicks), t.stallNs, t.sendNs, ctx.memBytes, t.bytes,
+    };
+    ctx.readTicks = ctx.compressTicks = ctx.memBytes = 0;
+    WRITE_BUFFER_CHECKED(ctx, values, sizeof(values));
+    return 0;
+}
+
 typedef Result (*Command)(Gecko::Context &);
 
 static const Command g_commands[] = {
@@ -409,6 +457,7 @@ static const Command g_commands[] = {
     _writemem, _resume, _pause, _attach, _detatch, _querymem_single,
     _querymem_multi, _current_pid, _attached_pid, _list_pids,
     _get_titleid, _disconnect, _readmem_multi, _set_breakpoint, _get_log, _get_title_name,
+    _set_options, _transfer_stats,
 };
 
 Result cmd_decode(Gecko::Context &ctx, int cmd) {

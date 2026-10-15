@@ -10,6 +10,7 @@ using namespace Gecko;
 
 alignas(0x1000) static u8 g_usbIn[USB_IN_SIZE];
 alignas(0x1000) static u8 g_usbOut[USB_OUT_SIZE];
+alignas(0x1000) static u8 g_usbOut2[USB_OUT_SIZE]; // second buffer for double buffering
 
 // Matches the IDs the PC client searches for.
 #define USB_VENDOR_ID  (0x057E)
@@ -22,7 +23,11 @@ alignas(0x1000) static u8 g_usbOut[USB_OUT_SIZE];
 #define USB_SHORT_PACKET_GRANULARITY (64)
 #endif
 
-UsbTransport::UsbTransport() : Transport(g_usbIn, USB_IN_SIZE, g_usbOut, USB_OUT_SIZE), broken(false) {}
+UsbTransport::UsbTransport() : Transport(g_usbIn, USB_IN_SIZE, g_usbOut, g_usbOut2, USB_OUT_SIZE), broken(false) {}
+
+UsbTransport::~UsbTransport() {
+    stopSender();
+}
 
 Result UsbTransport::initialize() {
     // vendor-specific class: no host driver claims it, the PC client talks to it directly

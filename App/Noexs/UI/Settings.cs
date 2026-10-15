@@ -159,6 +159,30 @@ public static class Settings
         Save();
     }
 
+    /// <summary>The sysmodule RLE-compresses dumps (less data on the link, more work on the Switch).</summary>
+    public static bool GetDumpCompression()
+    {
+        return Prefs.DumpCompression ?? true;
+    }
+
+    public static void SetDumpCompression(bool on)
+    {
+        Prefs.DumpCompression = on;
+        Save();
+    }
+
+    /// <summary>The sysmodule sends one buffer while it reads and compresses the next.</summary>
+    public static bool GetDoubleBuffering()
+    {
+        return Prefs.DoubleBuffering ?? true;
+    }
+
+    public static void SetDoubleBuffering(bool on)
+    {
+        Prefs.DoubleBuffering = on;
+        Save();
+    }
+
     /// <summary>null = follow the operating system theme.</summary>
     public static bool? GetDarkMode()
     {
@@ -182,6 +206,8 @@ public sealed class SettingsData
     [JsonPropertyName("MEM_ENDIAN")] public bool? SwapEndian { get; set; }
     [JsonPropertyName("CHOOSER_FILE")] public string? ChooserFile { get; set; }
     [JsonPropertyName("DARK_MODE")] public bool? DarkMode { get; set; }
+    [JsonPropertyName("DUMP_COMPRESSION")] public bool? DumpCompression { get; set; }
+    [JsonPropertyName("DOUBLE_BUFFERING")] public bool? DoubleBuffering { get; set; }
 }
 
 /// <summary>Gson-compatible watchlist entry (field names and enum names match the Java files).</summary>

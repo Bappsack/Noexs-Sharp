@@ -4,7 +4,7 @@
              x:Class="Noexs.UI.Views.UtilsTab"
              Width="1022" Height="470">
     <Canvas>
-        <c:TitledPane Canvas.Left="14" Canvas.Top="14" Width="542" Height="447" Header="USB Utils">
+        <c:TitledPane Canvas.Left="14" Canvas.Top="14" Width="542" Height="330" Header="USB Utils">
             <Canvas>
                 <TreeView x:Name="deviceTree" Canvas.Left="14" Canvas.Top="31" Width="509" Height="200"
                           BorderBrush="{DynamicResource NoexsPaneBorder}" BorderThickness="1" />
@@ -12,6 +12,16 @@
                 <Button Canvas.Left="15" Canvas.Top="273" Width="508" Height="25" Content="Refresh" Click="OnRefresh" />
                 <TextBlock Canvas.Left="15" Canvas.Top="243" Text="Device Info:" />
                 <TextBlock x:Name="infoLabel" Canvas.Left="84" Canvas.Top="243" />
+            </Canvas>
+        </c:TitledPane>
+        <c:TitledPane Canvas.Left="14" Canvas.Top="352" Width="542" Height="109" Header="Dump Transfer">
+            <Canvas>
+                <CheckBox x:Name="compressionBox" Canvas.Left="14" Canvas.Top="6" Content="Compression (RLE)"
+                          ToolTip.Tip="The Switch compresses memory before sending it: less data on the link, more work for the Switch" />
+                <CheckBox x:Name="doubleBufferBox" Canvas.Left="14" Canvas.Top="36" Content="Double buffering"
+                          ToolTip.Tip="The Switch sends one buffer while it reads and compresses the next" />
+                <TextBlock Canvas.Left="200" Canvas.Top="8" Width="320" TextWrapping="Wrap" FontSize="12"
+                           Text="Applied to the Switch on every connect and right away when changed. After a search, the status bar shows the dump speed and where the Switch spent its time." />
             </Canvas>
         </c:TitledPane>
         <c:TitledPane x:Name="logPane" Canvas.Left="566" Canvas.Top="14" Width="442" Height="447" Header="Switch Log" IsEnabled="False">
