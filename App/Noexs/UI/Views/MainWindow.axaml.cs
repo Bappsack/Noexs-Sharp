@@ -104,9 +104,16 @@ public partial class MainWindow : Window, IController
         };
 
         connectionType.ItemsSource = new[] { ConnectionType.USB, ConnectionType.NETWORK };
-        connectionType.SelectedItem = ConnectionType.NETWORK; //TODO save/store this
+        connectionType.SelectedItem = Settings.GetConnectionType();
+        ipAddr.IsEnabled = connectionType.SelectedItem is ConnectionType.NETWORK;
         connectionType.SelectionChanged += (_, _) =>
+        {
             ipAddr.IsEnabled = connectionType.SelectedItem is ConnectionType.NETWORK;
+            if (connectionType.SelectedItem is ConnectionType t)
+            {
+                Settings.SetConnectionType(t);
+            }
+        };
 
         autoResume.IsCheckedChanged += (_, _) => autoResumeChecked = autoResume.IsChecked == true;
 

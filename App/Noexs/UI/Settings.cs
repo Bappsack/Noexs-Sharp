@@ -68,6 +68,18 @@ public static class Settings
         Save();
     }
 
+    /// <summary>The connection method chosen last (USB or network).</summary>
+    public static ConnectionType GetConnectionType()
+    {
+        return Enum.TryParse(Prefs.ConnectionType, true, out ConnectionType t) ? t : ConnectionType.NETWORK;
+    }
+
+    public static void SetConnectionType(ConnectionType type)
+    {
+        Prefs.ConnectionType = type.ToString();
+        Save();
+    }
+
     public static string GetConnectionHost()
     {
         return Prefs.Host ?? NetworkConstants.DEFAULT_HOST;
@@ -200,6 +212,7 @@ public static class Settings
 public sealed class SettingsData
 {
     [JsonPropertyName("HOST")] public string? Host { get; set; }
+    [JsonPropertyName("CONNECTION_TYPE")] public string? ConnectionType { get; set; }
     [JsonPropertyName("HOST_HISTORY")] public List<string>? HostHistory { get; set; }
     [JsonPropertyName("PS_MAX_DEPTH")] public int? PointerMaxDepth { get; set; }
     [JsonPropertyName("PS_OFFSET_RANGE")] public long? PointerOffsetRange { get; set; }
