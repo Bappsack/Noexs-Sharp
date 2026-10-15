@@ -110,11 +110,16 @@ void __appInit(void) {
     // game hooked the next game launch.
     Result fwRc = setsysInitialize();
     SetSysFirmwareVersion fw = {};
+    // Atmosphère's "usb!usb30_force_enabled" (system_settings.ini): whether USB 3 may be used
+    u8 usb30 = 0;
+    u64 usb30Size = 0;
+    Result usb30Rc = 1;
     if (R_SUCCEEDED(fwRc)) {
         fwRc = setsysGetFirmwareVersion(&fw);
         if (R_SUCCEEDED(fwRc)) {
             hosversionSet(MAKEHOSVERSION(fw.major, fw.minor, fw.micro));
         }
+        usb30Rc = setsysGetSettingsItemValue("usb", "usb30_force_enabled", &usb30, sizeof(usb30), &usb30Size);
         setsysExit();
     }
 
@@ -131,6 +136,12 @@ void __appInit(void) {
         fsRc, sdRc, g_debugFile ? "open" : "NOT open", logErr);
     noexsLog("firmware %u.%u.%u (set:sys rc=0x%x)", HOSVER_MAJOR(hosversionGet()), HOSVER_MINOR(hosversionGet()),
         HOSVER_MICRO(hosversionGet()), fwRc);
+    if (R_SUCCEEDED(usb30Rc) && usb30Size > 0) {
+        noexsLog("usb 3.0: usb30_force_enabled = %u (%s)", usb30,
+            usb30 ? "USB 3.0 allowed" : "system default, usually USB 2.0 only");
+    } else {
+        noexsLog("usb 3.0: usb30_force_enabled not set (rc=0x%x): system default, usually USB 2.0 only", usb30Rc);
+    }
 
     rc = pmdmntInitialize();
     noexsLog("init pm:dmnt rc=0x%x", rc);
@@ -420,7 +431,15 @@ static void usbThreadMain(void*) {
                 continue;
             }
             failures = 0;
-            noexsLog("usb: client connected");
+            UsbDeviceSpeed speed = UsbDeviceSpeed_None;
+            const char *speedName = "speed unknown";
+            if (R_SUCCEEDED(usbDsGetSpeed(&speed))) {
+                speedName = speed == UsbDeviceSpeed_Super ? "SuperSpeed / USB 3.0"
+                          : speed == UsbDeviceSpeed_High  ? "High-Speed / USB 2.0"
+                          : speed == UsbDeviceSpeed_Full  ? "Full-Speed / USB 1.1"
+                          : "low/unknown speed";
+            }
+            noexsLog("usb: client connected (%s)", speedName);
             serveSession(usb, cmd);
             noexsLog("usb: client disconnected");
         }
