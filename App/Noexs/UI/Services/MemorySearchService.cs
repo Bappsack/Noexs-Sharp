@@ -10,6 +10,18 @@ namespace Noexs.UI.Services;
 
 public sealed class MemorySearchService : BackgroundService<SearchResult>
 {
+
+    /// <summary>Speed of the last finished dump, e.g. for comparing USB 2 / USB 3 / Wi-Fi.</summary>
+    public static string? LastDumpSummary { get; private set; }
+
+    /// <summary>"1.2 GB in 45.3 s = 27.1 MB/s, USB link 410 MB = 9.0 MB/s (RLE 3.0x)".</summary>
+    internal static string DumpSummary(long memoryBytes, long linkBytes, double seconds, string transport)
+    {
+        double s = Math.Max(seconds, 0.001);
+        string ratio = linkBytes > 0 ? FormattableString.Invariant($" (RLE {memoryBytes / (double)linkBytes:0.0}x)") : "";
+        return FormattableString.Invariant($"{NetUtils.FormatSize(memoryBytes)} in {s:0.0} s = {NetUtils.FormatSize((long)(memoryBytes / s))}/s, ") +
+               $"{transport} link {NetUtils.FormatSize(linkBytes)} = {NetUtils.FormatSize((long)(linkBytes / s))}/s{ratio}";
+    }
     private DumpRegionSupplier? supplier;
     private Debugger? conn;
     private Func<MappedBuffer, long>? provider;
@@ -366,6 +378,9 @@ public sealed class MemorySearchService : BackgroundService<SearchResult>
 
         private MemoryDump? CreateDump(SearchResult result, DumpRegionSupplier sup)
         {
+            LastDumpSummary = null;
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            long linkStart = conn.LinkBytesRead;
             bool resume = conn.GetStatus() == DebuggerStatus.PAUSED;
 
             //pause the game
@@ -437,6 +452,12 @@ public sealed class MemorySearchService : BackgroundService<SearchResult>
             if (resume)
             {
                 conn.Resume();
+            }
+            if (!IsCancelled)
+            {
+                LastDumpSummary = DumpSummary(read, conn.LinkBytesRead - linkStart, stopwatch.Elapsed.TotalSeconds,
+                    conn.Raw() is Noexs.IO.Usb.BulkConnection ? "USB" : "Wi-Fi");
+                Log.Info("dump: " + LastDumpSummary);
             }
             return IsCancelled ? null : dump;
         }

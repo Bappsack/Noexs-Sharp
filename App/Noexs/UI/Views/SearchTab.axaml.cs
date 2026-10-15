@@ -332,7 +332,8 @@ public partial class SearchTab : UserControl, IController
             result = v;
             DumpHistory.Add(result, result.Prev != null, conditionText);
             searchService.SetPrevResult(result);
-            mc.SetStatus("Done! Total Result:" + result.Size);
+            mc.SetStatus("Done! Total Result:" + result.Size
+                         + (MemorySearchService.LastDumpSummary is { } speed ? " | Dump: " + speed : ""));
             resultList.Clear();
             currentPage = 0;
             searchOptions.IsEnabled = true;

@@ -670,6 +670,14 @@ public sealed class Debugger : IDisposable
 
     private readonly byte[] compressedBuffer = new byte[2048 * 4 * 6];
 
+    private long linkBytesRead;
+
+    /// <summary>
+    /// Memory data received over the connection so far (chunk headers and the possibly RLE
+    /// compressed payload, i.e. what actually crossed USB / Wi-Fi), for transfer rate statistics.
+    /// </summary>
+    public long LinkBytesRead => Interlocked.Read(ref linkBytesRead);
+
     private int ReadCompressed(byte[] buffer)
     {
         int compressedFlag = conn.ReadByte();
@@ -678,11 +686,13 @@ public sealed class Debugger : IDisposable
         if (compressedFlag == 0)
         {
             conn.ReadFully(buffer, 0, decompressedLen);
+            Interlocked.Add(ref linkBytesRead, 4 + 1 + 4 + decompressedLen); // chunk rc + header + data
         }
         else
         {
             int compressedLen = conn.ReadInt();
             conn.ReadFully(compressedBuffer, 0, compressedLen);
+            Interlocked.Add(ref linkBytesRead, 4 + 1 + 4 + 4 + compressedLen);
             int pos = 0;
             for (int i = 0; i < compressedLen; i += 2)
             {
