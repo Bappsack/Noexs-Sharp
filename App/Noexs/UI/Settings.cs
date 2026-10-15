@@ -1,3 +1,4 @@
+using Noexs.Core;
 using Noexs.Util;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -159,15 +160,15 @@ public static class Settings
         Save();
     }
 
-    /// <summary>The sysmodule RLE-compresses dumps (less data on the link, more work on the Switch).</summary>
-    public static bool GetDumpCompression()
+    /// <summary>How the sysmodule compresses dumps (less data on the link, more work on the Switch).</summary>
+    public static DumpCompression GetDumpCompression()
     {
-        return Prefs.DumpCompression ?? true;
+        return DumpCompressionExtensions.Parse(Prefs.DumpCompression) ?? DumpCompression.Lz4;
     }
 
-    public static void SetDumpCompression(bool on)
+    public static void SetDumpCompression(DumpCompression compression)
     {
-        Prefs.DumpCompression = on;
+        Prefs.DumpCompression = compression.Key();
         Save();
     }
 
@@ -206,7 +207,7 @@ public sealed class SettingsData
     [JsonPropertyName("MEM_ENDIAN")] public bool? SwapEndian { get; set; }
     [JsonPropertyName("CHOOSER_FILE")] public string? ChooserFile { get; set; }
     [JsonPropertyName("DARK_MODE")] public bool? DarkMode { get; set; }
-    [JsonPropertyName("DUMP_COMPRESSION")] public bool? DumpCompression { get; set; }
+    [JsonPropertyName("DUMP_CODEC")] public string? DumpCompression { get; set; }
     [JsonPropertyName("DOUBLE_BUFFERING")] public bool? DoubleBuffering { get; set; }
 }
 

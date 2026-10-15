@@ -16,8 +16,13 @@
         </c:TitledPane>
         <c:TitledPane Canvas.Left="14" Canvas.Top="352" Width="542" Height="109" Header="Dump Transfer">
             <Canvas>
-                <CheckBox x:Name="compressionBox" Canvas.Left="14" Canvas.Top="6" Content="Compression (RLE)"
-                          ToolTip.Tip="The Switch compresses memory before sending it: less data on the link, more work for the Switch" />
+                <TextBlock Canvas.Left="14" Canvas.Top="10" Text="Compression:" />
+                <ComboBox x:Name="compressionBox" Canvas.Left="100" Canvas.Top="4" Width="90"
+                          ToolTip.Tip="The Switch compresses memory before sending it: less data on the link, more work for the Switch.&#10;LZ4: best for USB and Wi-Fi (typically 3-5x smaller). RLE: only shrinks repeated bytes. Off: raw data.">
+                    <ComboBoxItem Content="LZ4" />
+                    <ComboBoxItem Content="RLE" />
+                    <ComboBoxItem Content="Off" />
+                </ComboBox>
                 <CheckBox x:Name="doubleBufferBox" Canvas.Left="14" Canvas.Top="36" Content="Double buffering"
                           ToolTip.Tip="The Switch sends one buffer while it reads and compresses the next" />
                 <TextBlock Canvas.Left="200" Canvas.Top="8" Width="320" TextWrapping="Wrap" FontSize="12"

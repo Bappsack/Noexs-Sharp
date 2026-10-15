@@ -1,3 +1,4 @@
+using Noexs.Core;
 using Noexs.Util;
 using System.Text;
 using Avalonia.Controls;
@@ -10,12 +11,15 @@ public partial class UtilsTab : UserControl, IController
 {
     private MainWindow mc = null!;
 
+    /// <summary>The compression box's items, in order.</summary>
+    private static readonly DumpCompression[] CompressionChoices = [DumpCompression.Lz4, DumpCompression.Rle, DumpCompression.Off];
+
     public UtilsTab()
     {
         InitializeComponent();
-        compressionBox.IsChecked = Settings.GetDumpCompression();
+        compressionBox.SelectedIndex = Array.IndexOf(CompressionChoices, Settings.GetDumpCompression());
         doubleBufferBox.IsChecked = Settings.GetDoubleBuffering();
-        compressionBox.IsCheckedChanged += (_, _) => OnTransferOptionChanged();
+        compressionBox.SelectionChanged += (_, _) => OnTransferOptionChanged();
         doubleBufferBox.IsCheckedChanged += (_, _) => OnTransferOptionChanged();
         deviceTree.SelectionChanged += (_, _) =>
         {
@@ -67,7 +71,10 @@ public partial class UtilsTab : UserControl, IController
 
     private void OnTransferOptionChanged()
     {
-        Settings.SetDumpCompression(compressionBox.IsChecked == true);
+        if (compressionBox.SelectedIndex >= 0)
+        {
+            Settings.SetDumpCompression(CompressionChoices[compressionBox.SelectedIndex]);
+        }
         Settings.SetDoubleBuffering(doubleBufferBox.IsChecked == true);
         mc.ApplyTransferOptions();
     }

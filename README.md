@@ -60,7 +60,7 @@ It's the same driver DBI, NS-USBloader and Goldleaf use. On Linux and macOS no d
 | Disassembler | ARM64 disassembler and assembler (built in) |
 | Signatures | turns an address or pointer path into a byte signature that still finds it after a game update |
 | Dump Parser | inspects `.dmp` files offline and evaluates pointer paths in them |
-| Utils | USB devices, **Dump Transfer** options (compression, double buffering) and the **Switch Log** (what the sysmodule is doing) |
+| Utils | USB devices, **Dump Transfer** options (compression LZ4 / RLE / off, double buffering) and the **Switch Log** (what the sysmodule is doing) |
 
 ## Troubleshooting
 

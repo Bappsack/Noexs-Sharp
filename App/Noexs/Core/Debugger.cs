@@ -316,7 +316,7 @@ public sealed class Debugger : IDisposable
             Result rc = conn.ReadResult();
             if (rc.Succeeded)
             {
-                byte[] buffer = new byte[2048 * 4];
+                byte[] buffer = new byte[MaxChunkSize];
                 while (size > 0)
                 {
                     rc = conn.ReadResult();
@@ -358,7 +358,7 @@ public sealed class Debugger : IDisposable
             bytes ??= new byte[size];
 
             int pos = 0;
-            byte[] buffer = new byte[2048 * 4];
+            byte[] buffer = new byte[MaxChunkSize];
             while (pos < size)
             {
                 // A failed chunk (e.g. it reaches an unmapped page) is followed only by the final
@@ -523,24 +523,31 @@ public sealed class Debugger : IDisposable
 
     private const int OptionCompression = 1;
     private const int OptionDoubleBuffering = 2;
+    private const int OptionLz4 = 4;
 
     /// <summary>Sysmodule time and bytes for memory reads (see <see cref="GetTransferStats"/>).</summary>
     public sealed record TransferStats(long ReadNs, long CompressNs, long WaitNs, long SendNs, long MemoryBytes, long LinkBytes);
 
-    /// <summary>The sysmodule RLE-compresses memory it sends (as last set with <see cref="SetTransferOptions"/>).</summary>
-    public bool Compression { get; private set; } = true;
+    /// <summary>How the sysmodule compresses memory it sends (as last set with <see cref="SetTransferOptions"/>).</summary>
+    public DumpCompression Compression { get; private set; } = DumpCompression.Rle;
 
     /// <summary>The sysmodule sends one buffer while it fills the next.</summary>
     public bool DoubleBuffering { get; private set; }
 
     /// <summary>Sets the sysmodule's transfer options for this connection; returns once they are in effect.</summary>
-    public void SetTransferOptions(bool compression, bool doubleBuffering)
+    public void SetTransferOptions(DumpCompression compression, bool doubleBuffering)
     {
         Acquire();
         try
         {
+            int flags = compression switch
+            {
+                DumpCompression.Rle => OptionCompression,
+                DumpCompression.Lz4 => OptionCompression | OptionLz4,
+                _ => 0,
+            };
             conn.WriteCommand(COMMAND_SET_OPTIONS);
-            conn.WriteInt((compression ? OptionCompression : 0) | (doubleBuffering ? OptionDoubleBuffering : 0));
+            conn.WriteInt(flags | (doubleBuffering ? OptionDoubleBuffering : 0));
             conn.Flush();
             int effective = conn.ReadInt();
             Result rc = conn.ReadResult();
@@ -548,7 +555,9 @@ public sealed class Debugger : IDisposable
             {
                 throw new ConnectionException(rc);
             }
-            Compression = (effective & OptionCompression) != 0;
+            Compression = (effective & OptionCompression) == 0 ? DumpCompression.Off
+                        : (effective & OptionLz4) != 0 ? DumpCompression.Lz4
+                        : DumpCompression.Rle;
             DoubleBuffering = (effective & OptionDoubleBuffering) != 0;
         }
         finally
@@ -726,39 +735,57 @@ public sealed class Debugger : IDisposable
         }
     }
 
-    private readonly byte[] compressedBuffer = new byte[2048 * 4 * 6];
+    /// <summary>Largest memory chunk the sysmodule sends (LZ4 chunks; RLE and raw chunks are 8 KiB).</summary>
+    private const int MaxChunkSize = 0x8000;
+
+    private const int CodecRaw = 0;
+    private const int CodecRle = 1;
+    private const int CodecLz4 = 2;
+
+    private readonly byte[] compressedBuffer = new byte[MaxChunkSize];
 
     private long linkBytesRead;
 
     /// <summary>
-    /// Memory data received over the connection so far (chunk headers and the possibly RLE
+    /// Memory data received over the connection so far (chunk headers and the possibly
     /// compressed payload, i.e. what actually crossed USB / Wi-Fi), for transfer rate statistics.
     /// </summary>
     public long LinkBytesRead => Interlocked.Read(ref linkBytesRead);
 
+    /// <summary>Reads one memory chunk (u8 codec, u32 len, [u32 encoded len] data) and decodes it into buffer.</summary>
     private int ReadCompressed(byte[] buffer)
     {
-        int compressedFlag = conn.ReadByte();
+        int codec = conn.ReadByte();
         int decompressedLen = conn.ReadInt();
+        if (decompressedLen < 0 || decompressedLen > buffer.Length)
+        {
+            throw new ConnectionException("Invalid chunk length " + decompressedLen);
+        }
 
-        if (compressedFlag == 0)
+        if (codec == CodecRaw)
         {
             conn.ReadFully(buffer, 0, decompressedLen);
             Interlocked.Add(ref linkBytesRead, 4 + 1 + 4 + decompressedLen); // chunk rc + header + data
+            return decompressedLen;
         }
-        else
+        int compressedLen = conn.ReadInt();
+        if (compressedLen < 0 || compressedLen > compressedBuffer.Length)
         {
-            int compressedLen = conn.ReadInt();
-            conn.ReadFully(compressedBuffer, 0, compressedLen);
-            Interlocked.Add(ref linkBytesRead, 4 + 1 + 4 + 4 + compressedLen);
-            int pos = 0;
-            for (int i = 0; i < compressedLen; i += 2)
-            {
-                byte value = compressedBuffer[i];
-                int count = compressedBuffer[i + 1] & 0xFF;
-                Array.Fill(buffer, value, pos, count);
-                pos += count;
-            }
+            throw new ConnectionException("Invalid compressed chunk length " + compressedLen);
+        }
+        conn.ReadFully(compressedBuffer, 0, compressedLen);
+        Interlocked.Add(ref linkBytesRead, 4 + 1 + 4 + 4 + compressedLen);
+        var data = compressedBuffer.AsSpan(0, compressedLen);
+        var dst = buffer.AsSpan(0, decompressedLen);
+        bool ok = codec switch
+        {
+            CodecRle => ChunkCodecs.DecodeRle(data, dst),
+            CodecLz4 => ChunkCodecs.DecodeLz4(data, dst),
+            _ => false,
+        };
+        if (!ok)
+        {
+            throw new ConnectionException($"Corrupt memory chunk (codec {codec}, {compressedLen} -> {decompressedLen} bytes)");
         }
         return decompressedLen;
     }

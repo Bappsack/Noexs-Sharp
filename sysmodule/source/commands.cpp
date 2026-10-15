@@ -121,14 +121,13 @@ static Result _readmem(Gecko::Context &ctx) {
         ctx.readTicks += armGetSystemTick() - t0;
         ctx.memBytes += good;
         const Result ok = 0;
-        if (good > 0 && ctx.compress) {
+        if (good > 0 && ctx.codec != Gecko::CodecRaw) {
             t0 = armGetSystemTick();
-            const u32 *lens;
-            const u8 *encoded = Gecko::encodeChunks(stage, good, true, &lens);
+            Gecko::EncodedBlock encoded = Gecko::encodeChunks(stage, good, ctx.codec);
             ctx.compressTicks += armGetSystemTick() - t0;
-            for (u32 i = 0; i * GECKO_BUFFER_SIZE < good; i++) {
+            for (u32 i = 0; i < encoded.count; i++) {
                 WRITE_CHECKED(ctx, ok);
-                WRITE_BUFFER_CHECKED(ctx, encoded + i * Gecko::ENCODED_CHUNK_STRIDE, lens[i]);
+                WRITE_BUFFER_CHECKED(ctx, encoded.data + i * encoded.stride, encoded.lens[i]);
             }
         } else {
             for (u32 off = 0; off < good; off += GECKO_BUFFER_SIZE) {
@@ -400,13 +399,17 @@ static Result _get_title_name(Gecko::Context &ctx) {
     return rc;
 }
 
-//0x17: transfer options (in: u32 flags; out: u32 flags now in effect)
+//0x17: transfer options (in: u32 flags, see Gecko::Option; out: u32 flags now in effect)
 static Result _set_options(Gecko::Context &ctx) {
     u32 flags;
     READ_CHECKED(ctx, flags);
-    ctx.compress = (flags & Gecko::OptionCompression) != 0;
+    ctx.codec = !(flags & Gecko::OptionCompression) ? Gecko::CodecRaw
+              : (flags & Gecko::OptionLz4)          ? Gecko::CodecLz4
+                                                    : Gecko::CodecRle;
     bool doubleBuffering = ctx.conn->setDoubleBuffering((flags & Gecko::OptionDoubleBuffering) != 0);
-    u32 effective = (ctx.compress ? Gecko::OptionCompression : 0) | (doubleBuffering ? Gecko::OptionDoubleBuffering : 0);
+    u32 effective = (ctx.codec != Gecko::CodecRaw ? Gecko::OptionCompression : 0)
+                  | (ctx.codec == Gecko::CodecLz4 ? Gecko::OptionLz4 : 0)
+                  | (doubleBuffering ? Gecko::OptionDoubleBuffering : 0);
     WRITE_CHECKED(ctx, effective);
     return 0;
 }

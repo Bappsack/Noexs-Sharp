@@ -45,8 +45,16 @@ namespace Gecko {
 
     /// Transfer options a client can set with command 0x17 (bit flags).
     enum Option {
-        OptionCompression     = 1, // RLE-compress memory chunks (otherwise sent raw)
+        OptionCompression     = 1, // compress memory chunks (otherwise sent raw)
         OptionDoubleBuffering = 2, // send one buffer while the next is filled
+        OptionLz4             = 4, // with OptionCompression: LZ4 instead of RLE
+    };
+
+    /// How a memory chunk is encoded on the wire (its first byte).
+    enum Codec : u8 {
+        CodecRaw = 0,
+        CodecRle = 1,
+        CodecLz4 = 2,
     };
 
     /// One client session on one transport.
@@ -54,7 +62,7 @@ namespace Gecko {
         Transport *conn;
         Shared *shared;
         bool stop; // set by the disconnect command
-        bool compress = true;
+        Codec codec = CodecRle;
         // memory read statistics since the last command 0x18
         u64 readTicks = 0;
         u64 compressTicks = 0;

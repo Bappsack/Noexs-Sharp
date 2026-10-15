@@ -14,11 +14,11 @@ public sealed class MemorySearchService : BackgroundService<SearchResult>
     /// <summary>Speed of the last finished dump, e.g. for comparing USB 2 / USB 3 / Wi-Fi.</summary>
     public static string? LastDumpSummary { get; private set; }
 
-    /// <summary>"1.2 GB in 45.3 s = 27.1 MB/s, USB link 410 MB = 9.0 MB/s (RLE 3.0x)".</summary>
+    /// <summary>"1.2 GB in 45.3 s = 27.1 MB/s, USB link 410 MB = 9.0 MB/s (3.0x smaller)".</summary>
     internal static string DumpSummary(long memoryBytes, long linkBytes, double seconds, string transport)
     {
         double s = Math.Max(seconds, 0.001);
-        string ratio = linkBytes > 0 ? FormattableString.Invariant($" (RLE {memoryBytes / (double)linkBytes:0.0}x)") : "";
+        string ratio = linkBytes > 0 ? FormattableString.Invariant($" ({memoryBytes / (double)linkBytes:0.0}x smaller)") : "";
         return FormattableString.Invariant($"{NetUtils.FormatSize(memoryBytes)} in {s:0.0} s = {NetUtils.FormatSize((long)(memoryBytes / s))}/s, ") +
                $"{transport} link {NetUtils.FormatSize(linkBytes)} = {NetUtils.FormatSize((long)(linkBytes / s))}/s{ratio}";
     }
@@ -470,7 +470,7 @@ public sealed class MemorySearchService : BackgroundService<SearchResult>
                     Debugger.TransferStats t = conn.GetTransferStats();
                     LastDumpSummary += FormattableString.Invariant(
                         $" | Switch: read {t.ReadNs / 1e9:0.0} s, compress {t.CompressNs / 1e9:0.0} s, waiting for link {t.WaitNs / 1e9:0.0} s") +
-                        $" (compression {(conn.Compression ? "on" : "off")}, double buffering {(conn.DoubleBuffering ? "on" : "off")})";
+                        $" (compression {conn.Compression.Label()}, double buffering {(conn.DoubleBuffering ? "on" : "off")})";
                 }
                 catch (ConnectionException e) when (conn.Connected)
                 {

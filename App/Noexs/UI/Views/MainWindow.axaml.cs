@@ -296,7 +296,7 @@ public partial class MainWindow : Window, IController
         {
             return;
         }
-        bool compression = Settings.GetDumpCompression();
+        DumpCompression compression = Settings.GetDumpCompression();
         bool doubleBuffering = Settings.GetDoubleBuffering();
         Debugger d = debugger;
         Task.Run(() =>
@@ -304,7 +304,7 @@ public partial class MainWindow : Window, IController
             try
             {
                 d.SetTransferOptions(compression, doubleBuffering);
-                Log.Info($"transfer options: compression {d.Compression}, double buffering {d.DoubleBuffering}");
+                Log.Info($"transfer options: compression {d.Compression.Label()}, double buffering {d.DoubleBuffering}");
             }
             catch (Exception e)
             {
