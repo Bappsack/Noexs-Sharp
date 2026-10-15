@@ -11,8 +11,14 @@ namespace Noexs.UI.Services;
 public sealed class MemorySearchService : BackgroundService<SearchResult>
 {
 
-    /// <summary>Speed of the last finished dump, e.g. for comparing USB 2 / USB 3 / Wi-Fi.</summary>
+    /// <summary>Speed of the last finished dump, e.g. for comparing USB 2 / USB 3 / Wi-Fi (one line, for the log).</summary>
     public static string? LastDumpSummary { get; private set; }
+
+    /// <summary>The same as a few short lines, for a tooltip.</summary>
+    public static string? LastDumpDetails { get; private set; }
+
+    /// <summary>How long the last finished dump took.</summary>
+    public static double? LastDumpSeconds { get; private set; }
 
     /// <summary>"1.2 GB in 45.3 s = 27.1 MB/s, USB link 410 MB = 9.0 MB/s (3.0x smaller)".</summary>
     internal static string DumpSummary(long memoryBytes, long linkBytes, double seconds, string transport)
@@ -379,6 +385,8 @@ public sealed class MemorySearchService : BackgroundService<SearchResult>
         private MemoryDump? CreateDump(SearchResult result, DumpRegionSupplier sup)
         {
             LastDumpSummary = null;
+            LastDumpDetails = null;
+            LastDumpSeconds = null;
             try
             {
                 conn.GetTransferStats(); // start the Switch's counters from zero
@@ -463,19 +471,35 @@ public sealed class MemorySearchService : BackgroundService<SearchResult>
             }
             if (!IsCancelled)
             {
-                LastDumpSummary = DumpSummary(read, conn.LinkBytesRead - linkStart, stopwatch.Elapsed.TotalSeconds,
-                    conn.Raw() is Noexs.IO.Usb.BulkConnection ? "USB" : "Wi-Fi");
+                double seconds = Math.Max(stopwatch.Elapsed.TotalSeconds, 0.001);
+                long linkBytes = conn.LinkBytesRead - linkStart;
+                string transport = conn.Raw() is Noexs.IO.Usb.BulkConnection ? "USB" : "Wi-Fi";
+                string options = $"compression {conn.Compression.Label()}, double buffering {(conn.DoubleBuffering ? "on" : "off")}";
+                LastDumpSummary = DumpSummary(read, linkBytes, seconds, transport);
+                LastDumpSeconds = seconds;
+                var details = new System.Text.StringBuilder();
+                details.Append(FormattableString.Invariant(
+                    $"Dump: {NetUtils.FormatSize(read)} in {seconds:0.0} s ({NetUtils.FormatSize((long)(read / seconds))}/s)"));
+                if (linkBytes > 0)
+                {
+                    details.Append('\n').Append(FormattableString.Invariant(
+                        $"{transport}: {NetUtils.FormatSize(linkBytes)} sent at {NetUtils.FormatSize((long)(linkBytes / seconds))}/s ({read / (double)linkBytes:0.0}x smaller)"));
+                }
                 try
                 {
                     Debugger.TransferStats t = conn.GetTransferStats();
-                    LastDumpSummary += FormattableString.Invariant(
-                        $" | Switch: read {t.ReadNs / 1e9:0.0} s, compress {t.CompressNs / 1e9:0.0} s, waiting for link {t.WaitNs / 1e9:0.0} s") +
-                        $" (compression {conn.Compression.Label()}, double buffering {(conn.DoubleBuffering ? "on" : "off")})";
+                    string switchTimes = FormattableString.Invariant(
+                        $"Switch: read {t.ReadNs / 1e9:0.0} s, compress {t.CompressNs / 1e9:0.0} s, waiting for link {t.WaitNs / 1e9:0.0} s");
+                    LastDumpSummary += " | " + switchTimes;
+                    details.Append('\n').Append(switchTimes);
                 }
                 catch (ConnectionException e) when (conn.Connected)
                 {
                     Log.Info("transfer stats: " + e.Message);
                 }
+                LastDumpSummary += $" ({options})";
+                details.Append('\n').Append(char.ToUpperInvariant(options[0])).Append(options, 1, options.Length - 1);
+                LastDumpDetails = details.ToString();
                 Log.Info("dump: " + LastDumpSummary);
             }
             return IsCancelled ? null : dump;

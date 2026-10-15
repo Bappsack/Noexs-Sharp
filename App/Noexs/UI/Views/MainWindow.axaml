@@ -48,7 +48,8 @@
             <TextBlock Canvas.Left="737" Canvas.Top="20" Text="IP Address" />
             <ProgressBar x:Name="progressBar" Canvas.Left="11" Canvas.Top="44" Width="558" Height="17"
                          Minimum="0" Maximum="1" Value="0" />
-            <TextBlock x:Name="statusLbl" Canvas.Left="14" Canvas.Top="24" Text="Ready" />
+            <TextBlock x:Name="statusLbl" Canvas.Left="14" Canvas.Top="24" Width="336" Text="Ready"
+                       TextTrimming="CharacterEllipsis" Background="Transparent" />
             <TextBlock x:Name="progressLabel" Canvas.Left="575" Canvas.Top="46" Text="0%" />
             <Button Canvas.Left="357" Canvas.Top="12" Height="25" Content="Pause" Click="PauseGame" />
             <Button Canvas.Left="411" Canvas.Top="12" Height="25" Content="Resume" Click="ContinueProcess" />

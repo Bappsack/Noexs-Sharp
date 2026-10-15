@@ -91,7 +91,7 @@ public partial class MainWindow : Window, IController
         Fire(c => c.OnDisconnect());
 
         SetProgress(0);
-        connectionService.MessageChanged += SetStatus;
+        connectionService.MessageChanged += m => SetStatus(m);
 
         ipAddr.Text = Settings.GetConnectionHost();
         // the history button is only usable together with the address box (network connections)
@@ -419,13 +419,18 @@ public partial class MainWindow : Window, IController
                               (title != null ? " - " + title : ""));
     }
 
-    public void SetStatus(string message)
+    /// <summary>Shows message in the status bar; details (if any) appear when hovering it.</summary>
+    public void SetStatus(string message, string? details = null)
     {
         if (string.IsNullOrEmpty(message))
         {
             return;
         }
-        RunOnUi(() => statusLbl.Text = message);
+        RunOnUi(() =>
+        {
+            statusLbl.Text = message;
+            ToolTip.SetTip(statusLbl, details);
+        });
     }
 
     public void SetConnectBtnText(string message)
