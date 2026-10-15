@@ -83,6 +83,34 @@ internal static partial class LibUsbK
     public static unsafe partial bool UsbK_WritePipe(IntPtr handle, byte pipeId, byte* buffer, uint length,
         out uint transferred, IntPtr overlapped);
 
+    [LibraryImport(Dll, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UsbK_AbortPipe(IntPtr handle, byte pipeId);
+
+    [LibraryImport(Dll, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UsbK_GetOverlappedResult(IntPtr handle, IntPtr overlapped, out uint transferred,
+        [MarshalAs(UnmanagedType.Bool)] bool wait);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    public static partial IntPtr CreateEventW(IntPtr attributes, [MarshalAs(UnmanagedType.Bool)] bool manualReset,
+        [MarshalAs(UnmanagedType.Bool)] bool initialState, IntPtr name);
+
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool ResetEvent(IntPtr handle);
+
+    [LibraryImport("kernel32.dll")]
+    public static partial uint WaitForSingleObject(IntPtr handle, uint ms);
+
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool CloseHandle(IntPtr handle);
+
+    public const int ERROR_IO_PENDING = 997;
+    public const uint WAIT_OBJECT_0 = 0;
+    public const uint WAIT_TIMEOUT = 0x102;
+
     /// <summary>True when libusbK.dll can be loaded (i.e. the libusbK driver was installed with Zadig).</summary>
     public static bool Available
     {
@@ -136,15 +164,76 @@ public sealed class LibUsbKConnection : BulkConnection
         "Install the libusbK driver once with Zadig (https://zadig.akeo.ie/): Options → List All Devices, " +
         "select the device with USB ID 057E 3000, choose \"libusbK\" and click Install / Replace Driver.";
 
+    // Read-ahead: several reads are always queued on the IN pipe, so the host controller takes the
+    // next packets while the App is still decoding the previous block. With one read at a time the
+    // link idles between reads (the Switch has to wait until the PC asks again).
+    private const int ReadAheadSlots = 4;
+    private const int SlotSize = ReadTransferSize;
+
+    private unsafe struct Slot
+    {
+        public byte* Buffer;
+        public IntPtr Overlapped; // OVERLAPPED, its hEvent is Event
+        public IntPtr Event;
+        public bool Pending;
+        public int Length;
+        public int Pos;
+    }
+
     private IntPtr handle;
     private readonly byte pipeIn;
     private readonly byte pipeOut;
+    private readonly Slot[] slots = new Slot[ReadAheadSlots];
+    private int head;
+    private int readTimeoutMs = TimeoutMs;
+    private readonly object io = new();
+
+    // OVERLAPPED: Internal, InternalHigh (ULONG_PTR), Offset + OffsetHigh (2x DWORD), hEvent
+    private static int OverlappedEventOffset => 2 * IntPtr.Size + 8;
 
     private LibUsbKConnection(IntPtr handle, byte pipeIn, byte pipeOut)
     {
         this.handle = handle;
         this.pipeIn = pipeIn;
         this.pipeOut = pipeOut;
+    }
+
+    /// <summary>Allocates the read-ahead buffers and queues a read on each of them.</summary>
+    private unsafe void StartReadAhead()
+    {
+        for (int i = 0; i < slots.Length; i++)
+        {
+            ref Slot s = ref slots[i];
+            s.Buffer = (byte*)NativeMemory.AlignedAlloc(SlotSize, 0x1000);
+            s.Overlapped = (IntPtr)NativeMemory.AllocZeroed((nuint)(OverlappedEventOffset + IntPtr.Size));
+            s.Event = LibUsbK.CreateEventW(IntPtr.Zero, true, false, IntPtr.Zero);
+            if (s.Event == IntPtr.Zero)
+            {
+                throw new UsbException("Unable to create a USB read event (error " + Marshal.GetLastPInvokeError() + ")");
+            }
+            Marshal.WriteIntPtr(s.Overlapped, OverlappedEventOffset, s.Event);
+        }
+        for (int i = 0; i < slots.Length; i++)
+        {
+            Submit(ref slots[i]);
+        }
+    }
+
+    /// <summary>Queues a read into the slot's buffer.</summary>
+    private unsafe void Submit(ref Slot s)
+    {
+        s.Length = s.Pos = 0;
+        LibUsbK.ResetEvent(s.Event);
+        new Span<byte>((void*)s.Overlapped, OverlappedEventOffset).Clear(); // keeps hEvent
+        if (!LibUsbK.UsbK_ReadPipe(handle, pipeIn, s.Buffer, SlotSize, out _, s.Overlapped))
+        {
+            int error = Marshal.GetLastPInvokeError();
+            if (error != LibUsbK.ERROR_IO_PENDING)
+            {
+                throw new UsbException("USB read failed (error " + error + ")");
+            }
+        }
+        s.Pending = true;
     }
 
     /// <summary>Opens the Switch (vid:pid); throws a <see cref="UsbException"/> that says what to fix.</summary>
@@ -202,9 +291,21 @@ public sealed class LibUsbKConnection : BulkConnection
                     throw new UsbException("The USB device has no bulk IN/OUT endpoints");
                 }
                 DiscardStaleData(handle, pipeIn);
-                LibUsbK.SetTimeout(handle, pipeIn, TimeoutMs);
+                // queued reads wait as long as the App is idle; the read timeout applies to
+                // waiting for one of them instead
+                LibUsbK.SetTimeout(handle, pipeIn, 0);
                 LibUsbK.SetTimeout(handle, pipeOut, TimeoutMs);
-                return new LibUsbKConnection(handle, pipeIn, pipeOut);
+                var connection = new LibUsbKConnection(handle, pipeIn, pipeOut);
+                try
+                {
+                    connection.StartReadAhead();
+                }
+                catch
+                {
+                    connection.FreeReadAhead();
+                    throw;
+                }
+                return connection;
             }
             catch
             {
@@ -271,21 +372,86 @@ public sealed class LibUsbKConnection : BulkConnection
 
     protected override void SetInTimeout(int ms)
     {
-        if (handle != IntPtr.Zero)
-        {
-            LibUsbK.SetTimeout(handle, pipeIn, (uint)ms);
-        }
+        readTimeoutMs = ms;
     }
 
     protected override unsafe int TransferIn(byte[] buf, int off, int len)
     {
-        fixed (byte* p = buf)
+        lock (io)
         {
-            if (!LibUsbK.UsbK_ReadPipe(handle, pipeIn, p + off, (uint)len, out uint n, IntPtr.Zero))
+            while (true)
             {
-                throw new UsbException("USB read failed (error " + Marshal.GetLastPInvokeError() + ")");
+                if (handle == IntPtr.Zero)
+                {
+                    throw new UsbException("USB connection closed");
+                }
+                ref Slot s = ref slots[head];
+                if (s.Pending)
+                {
+                    uint wait = LibUsbK.WaitForSingleObject(s.Event, (uint)readTimeoutMs);
+                    if (wait == LibUsbK.WAIT_TIMEOUT)
+                    {
+                        throw new UsbException($"USB read timed out (no data from the Switch for {readTimeoutMs} ms)");
+                    }
+                    s.Pending = false;
+                    if (wait != LibUsbK.WAIT_OBJECT_0 || !LibUsbK.UsbK_GetOverlappedResult(handle, s.Overlapped, out uint n, false))
+                    {
+                        throw new UsbException("USB read failed (error " + Marshal.GetLastPInvokeError() + ")");
+                    }
+                    s.Length = (int)n;
+                    s.Pos = 0;
+                }
+                int count = Math.Min(len, s.Length - s.Pos);
+                if (count > 0)
+                {
+                    new ReadOnlySpan<byte>(s.Buffer + s.Pos, count).CopyTo(buf.AsSpan(off, count));
+                    s.Pos += count;
+                }
+                if (s.Pos == s.Length)
+                {
+                    // used up (or a zero-length packet): queue it again behind the others
+                    head = (head + 1) % slots.Length;
+                    Submit(ref s);
+                }
+                if (count > 0)
+                {
+                    return count;
+                }
             }
-            return (int)n;
+        }
+    }
+
+    /// <summary>Cancels the queued reads and frees their buffers.</summary>
+    private unsafe void FreeReadAhead()
+    {
+        if (handle != IntPtr.Zero)
+        {
+            LibUsbK.UsbK_AbortPipe(handle, pipeIn);
+        }
+        for (int i = 0; i < slots.Length; i++)
+        {
+            ref Slot s = ref slots[i];
+            if (s.Pending && s.Event != IntPtr.Zero)
+            {
+                // the driver may write into the buffer until the aborted read has completed
+                LibUsbK.WaitForSingleObject(s.Event, 2000);
+                s.Pending = false;
+            }
+            if (s.Event != IntPtr.Zero)
+            {
+                LibUsbK.CloseHandle(s.Event);
+                s.Event = IntPtr.Zero;
+            }
+            if (s.Overlapped != IntPtr.Zero)
+            {
+                NativeMemory.Free((void*)s.Overlapped);
+                s.Overlapped = IntPtr.Zero;
+            }
+            if (s.Buffer != null)
+            {
+                NativeMemory.AlignedFree(s.Buffer);
+                s.Buffer = null;
+            }
         }
     }
 
@@ -302,8 +468,20 @@ public sealed class LibUsbKConnection : BulkConnection
 
     protected override void Close()
     {
-        if (handle != IntPtr.Zero)
+        IntPtr h = handle;
+        if (h == IntPtr.Zero)
         {
+            return;
+        }
+        // a read waiting on another thread completes with an error and releases the lock
+        LibUsbK.UsbK_AbortPipe(h, pipeIn);
+        lock (io)
+        {
+            if (handle == IntPtr.Zero)
+            {
+                return;
+            }
+            FreeReadAhead();
             LibUsbK.UsbK_Free(handle);
             handle = IntPtr.Zero;
         }

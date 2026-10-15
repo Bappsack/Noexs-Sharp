@@ -6,7 +6,9 @@ using namespace Gecko;
 // Sizes are multiples of every USB bulk max-packet size (64/512/1024), so a read can never
 // overflow on a packet boundary.
 #define USB_IN_SIZE  (0x4000)
-#define USB_OUT_SIZE (0x10000)
+// 256 KiB per transfer: the per-transfer overhead (posting the buffer, the host picking it up)
+// is paid once per 256 KiB instead of once per 64 KiB.
+#define USB_OUT_SIZE (0x40000)
 
 alignas(0x1000) static u8 g_usbIn[USB_IN_SIZE];
 alignas(0x1000) static u8 g_usbOut[USB_OUT_SIZE];

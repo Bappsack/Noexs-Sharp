@@ -15,7 +15,7 @@ namespace Noexs.IO.Usb;
 /// </summary>
 public abstract class BulkConnection : IConnection
 {
-    protected const int ReadTransferSize = 0x10000;
+    protected const int ReadTransferSize = 0x40000;
     protected const int TimeoutMs = 30_000;
     private const int ShortPacketGranularity = 64;
 

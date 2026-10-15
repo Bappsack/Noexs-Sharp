@@ -19,9 +19,9 @@
 /// the App's 8 KiB chunk buffer.
 #define GECKO_BUFFER_SIZE (2048 * 4)
 
-/// Game memory is read in blocks of this size and then sent as several wire chunks;
-/// fewer svcReadDebugProcessMemory calls for the same memory footprint class.
-#define GECKO_STAGE_SIZE (0x10000)
+/// Game memory is read in blocks of this size and then encoded as several wire chunks in
+/// parallel; fewer svcReadDebugProcessMemory calls and enough chunks to keep every core busy.
+#define GECKO_STAGE_SIZE (0x20000)
 
 namespace Gecko {
 
@@ -63,6 +63,9 @@ namespace Gecko {
 };
 
 void logString(const char *str, int len);
+
+/// Timestamped line in the noexs log (SD card file and the in-memory copy).
+void noexsLog(const char *fmt, ...);
 
 /// Copies the most recent log text (kept in memory, also without an SD card) into out.
 u32 copyRecentLog(char *out, u32 max);

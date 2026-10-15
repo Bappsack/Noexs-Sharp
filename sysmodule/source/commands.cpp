@@ -2,6 +2,7 @@
 #include <string.h>
 #include "gecko.h"
 #include "errors.h"
+#include "encoder.h"
 
 #define IOFAIL MAKERESULT(Module_TCPGecko, TCPGeckoError_iofail)
 
@@ -28,54 +29,16 @@
 
 #define DBG (ctx.shared->dbg)
 
-/*
- * Chunk format (unchanged): u8 compressed, u32 len, [u32 compressedLen], data.
- * RLE data is a list of (value, count) byte pairs. The chunk is compressed directly into the
- * transport's output buffer; if RLE doesn't pay off it is sent raw instead.
- */
-static Result writeCompressed(Gecko::Context &ctx, const u8 *src, u32 len) {
-    if (!ctx.compress) {
-        u8 *out = ctx.conn->reserve(5 + len);
-        if (!out) {
-            return IOFAIL;
-        }
-        out[0] = 0;
-        memcpy(out + 1, &len, 4);
-        memcpy(out + 5, src, len);
-        ctx.conn->commit(5 + len);
-        return 0;
-    }
-    const u32 header = 1 + 4 + 4;
-    u8 *out = ctx.conn->reserve(header + len * 2);
+/// Uncompressed chunk (u8 0, u32 len, data) straight into the transport's output buffer.
+static Result writeRaw(Gecko::Context &ctx, const u8 *src, u32 len) {
+    u8 *out = ctx.conn->reserve(5 + len);
     if (!out) {
         return IOFAIL;
     }
-    u8 *rle = out + header;
-    u32 pos = 0;
-    u32 i = 0;
-    while (i < len && pos <= len) {
-        u8 value = src[i];
-        u32 max = len - i < 255 ? len - i : 255;
-        u32 run = 1;
-        while (run < max && src[i + run] == value) {
-            run++;
-        }
-        rle[pos++] = value;
-        rle[pos++] = (u8)run;
-        i += run;
-    }
-
-    if (i == len && pos <= len) {
-        out[0] = 1;
-        memcpy(out + 1, &len, 4);
-        memcpy(out + 5, &pos, 4);
-        ctx.conn->commit(header + pos);
-    } else {
-        out[0] = 0;
-        memcpy(out + 1, &len, 4);
-        memcpy(out + 5, src, len);
-        ctx.conn->commit(5 + len);
-    }
+    out[0] = 0;
+    memcpy(out + 1, &len, 4);
+    memcpy(out + 5, src, len);
+    ctx.conn->commit(5 + len);
     return 0;
 }
 
@@ -139,40 +102,51 @@ static Result _readmem(Gecko::Context &ctx) {
     }
     u8 *stage = ctx.shared->stage;
     while (size > 0) {
-        // one svc call per 64 KiB block; if the block fails (e.g. it touches an unmapped page)
-        // fall back to per-chunk reads so the reported error position matches the old behaviour
+        // one svc call per block; if the block fails (e.g. it touches an unmapped page) read it
+        // chunk by chunk: the chunks before the failing one are sent, then its error ends the reply
         u32 block = size < GECKO_STAGE_SIZE ? size : GECKO_STAGE_SIZE;
+        u32 good = block;
+        Result failRc = 0;
         u64 t0 = armGetSystemTick();
-        bool blockOk = R_SUCCEEDED(DBG.readMem(stage, addr, block));
+        if (R_FAILED(DBG.readMem(stage, addr, block))) {
+            for (u32 off = 0; off < block; off += GECKO_BUFFER_SIZE) {
+                u32 len = block - off < GECKO_BUFFER_SIZE ? block - off : GECKO_BUFFER_SIZE;
+                failRc = DBG.readMem(stage + off, addr + off, len);
+                if (R_FAILED(failRc)) {
+                    good = off;
+                    break;
+                }
+            }
+        }
         ctx.readTicks += armGetSystemTick() - t0;
-        for (u32 off = 0; off < block; off += GECKO_BUFFER_SIZE) {
-            u32 len = block - off < GECKO_BUFFER_SIZE ? block - off : GECKO_BUFFER_SIZE;
-            u8 *src = stage + off;
-            if (!blockOk) {
-                t0 = armGetSystemTick();
-                rc = DBG.readMem(src, addr + off, len);
-                ctx.readTicks += armGetSystemTick() - t0;
-            } else {
-                rc = 0;
-            }
-            WRITE_CHECKED(ctx, rc);
-            if (R_FAILED(rc)) {
-                return rc;
-            }
-            // compression time without the waits for the link that happen when the buffer is full
+        ctx.memBytes += good;
+        const Result ok = 0;
+        if (good > 0 && ctx.compress) {
             t0 = armGetSystemTick();
-            u64 stall0 = ctx.conn->stallTicks();
-            rc = writeCompressed(ctx, src, len);
-            ctx.compressTicks += (armGetSystemTick() - t0) - (ctx.conn->stallTicks() - stall0);
-            ctx.memBytes += len;
-            if (R_FAILED(rc)) {
-                return rc;
+            const u32 *lens;
+            const u8 *encoded = Gecko::encodeChunks(stage, good, true, &lens);
+            ctx.compressTicks += armGetSystemTick() - t0;
+            for (u32 i = 0; i * GECKO_BUFFER_SIZE < good; i++) {
+                WRITE_CHECKED(ctx, ok);
+                WRITE_BUFFER_CHECKED(ctx, encoded + i * Gecko::ENCODED_CHUNK_STRIDE, lens[i]);
             }
+        } else {
+            for (u32 off = 0; off < good; off += GECKO_BUFFER_SIZE) {
+                WRITE_CHECKED(ctx, ok);
+                rc = writeRaw(ctx, stage + off, good - off < GECKO_BUFFER_SIZE ? good - off : GECKO_BUFFER_SIZE);
+                if (R_FAILED(rc)) {
+                    return rc;
+                }
+            }
+        }
+        if (R_FAILED(failRc)) {
+            WRITE_CHECKED(ctx, failRc);
+            return failRc;
         }
         addr += block;
         size -= block;
     }
-    return rc;
+    return 0;
 }
 
 //0x07

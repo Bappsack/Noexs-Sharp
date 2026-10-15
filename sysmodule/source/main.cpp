@@ -88,7 +88,7 @@ void __libnx_initheap(void) {
 }
 
 static int openLog();
-static void noexsLog(const char* fmt, ...);
+void noexsLog(const char* fmt, ...);
 static bool g_socketsUp = false;
 
 /*
@@ -217,7 +217,7 @@ u32 copyRecentLog(char* out, u32 max) {
 }
 
 /// Appends one line to the in-memory log and sdmc:/config/noexs/log.txt (if the SD card works).
-static void noexsLog(const char* fmt, ...) {
+void noexsLog(const char* fmt, ...) {
     char line[256];
     // seconds since boot, so slow steps are visible
     u64 ms = armTicksToNs(armGetSystemTick()) / 1000000ULL;
