@@ -13,7 +13,7 @@
 // The App and the sysmodule must have the same major version (the App checks it on connect).
 #define VER_MAJOR (2)
 #define VER_MINOR (0)
-#define VER_PATCH (1)
+#define VER_PATCH (2)
 
 /// Size of one (optionally RLE compressed) data chunk on the wire; must match
 /// the App's 8 KiB chunk buffer.

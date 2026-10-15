@@ -15,7 +15,7 @@ public partial class NoexsApplication : Application
     public const int VERSION_PATCH = 1;
 
     public const string APP_NAME = "Noexs";
-    public const string APP_VERSION = "2.0.1";
+    public const string APP_VERSION = "2.0.2";
 
     public override void Initialize()
     {

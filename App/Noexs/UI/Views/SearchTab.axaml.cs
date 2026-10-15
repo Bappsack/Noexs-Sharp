@@ -333,7 +333,7 @@ public partial class SearchTab : UserControl, IController
             DumpHistory.Add(result, result.Prev != null, conditionText);
             searchService.SetPrevResult(result);
             // short enough for the status bar; the dump details are in its tooltip and the log
-            mc.SetStatus($"Done! {result.Size:N0} results"
+            mc.SetStatus($"Done! {result.Size:N0} result{(result.Size == 1 ? "" : "s")}"
                          + (MemorySearchService.LastDumpSeconds is { } s ? FormattableString.Invariant($" (dump {s:0.0} s)") : ""),
                 MemorySearchService.LastDumpDetails);
             resultList.Clear();

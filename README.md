@@ -1,6 +1,6 @@
 # Noexs-Sharp
 
-**Version 2.0.1** · A rewrite of [Noexes](https://github.com/mdbell/Noexes), the Nintendo Switch
+**Version 2.0.2** · A rewrite of [Noexes](https://github.com/mdbell/Noexes), the Nintendo Switch
 memory search and debugging tool.
 
 - **App** (`App/`): the PC program, a single self-contained executable for Windows, Linux and macOS
@@ -8,6 +8,24 @@ memory search and debugging tool.
 - **Sysmodule** (`sysmodule/`): runs on the Switch (Atmosphère) and talks to the App over Wi-Fi or USB.
 
 App and sysmodule belong together: the App only connects to a 2.x sysmodule.
+
+![Noexs-Sharp searching Pokémon Scarlet on a Switch](docs/screenshot.png)
+
+## Compared to the original Noexes
+
+| | Noexes (original) | Noexs-Sharp |
+| --- | --- | --- |
+| PC program | Java / JavaFX, needs a Java runtime | one native executable, no runtime needed |
+| Platforms | wherever Java and JavaFX run | Windows, Linux, macOS, each on x64 and ARM64 |
+| USB | never worked | works (libusbK on Windows, libusb on Linux and macOS) |
+| Dump compression | RLE on one CPU core | LZ4 (or RLE / off) on all four CPU cores |
+| Dump transfer | unbuffered | buffered, sending one block while the next is compressed |
+| Dump speed | — | a 2.22 GB game dump over USB 2.0 in 19 s (LZ4, 4.3x smaller) |
+| Unreadable memory during a dump | the App misread the error and the connection got out of sync | reported as an error, the connection stays usable |
+| Signatures | — | find addresses and pointer paths again after a game update |
+| Dump Parser | separate tool (NoExesDumpParse) | built in |
+| Diagnostics | — | Switch Log readable from the App, dump speed breakdown |
+| Convenience | — | dark mode, IP address history, remembers USB / Wi-Fi |
 
 ## Download
 
@@ -36,7 +54,7 @@ macOS: the binary isn't signed, so run `xattr -d com.apple.quarantine noexs` onc
 - **USB:** pick **USB** next to the IP box and press **Connect**. On Windows this needs the
   libusbK driver once (below).
 
-The status bar then shows `Connected (noexs 2.0.1)`.
+The status bar then shows `Connected (noexs 2.0.2)`.
 
 ### USB driver on Windows (libusbK, once)
 

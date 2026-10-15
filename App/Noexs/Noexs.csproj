@@ -8,7 +8,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>noexs</AssemblyName>
     <RootNamespace>Noexs</RootNamespace>
-    <Version>2.0.1</Version>
+    <Version>2.0.2</Version>
     <Description>A graphical remote debugger for the Nintendo Switch</Description>
 
     <!-- Avalonia: compiled bindings everywhere so nothing relies on reflection -->
