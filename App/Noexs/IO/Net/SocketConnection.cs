@@ -25,6 +25,11 @@ public sealed class SocketConnection : IConnection
     private readonly BufferedStream output;
     private volatile bool closed;
 
+    public void SetReadTimeout(int ms)
+    {
+        socket.ReceiveTimeout = ms > 0 ? ms : NetworkConstants.IO_TIMEOUT_MS;
+    }
+
     public SocketConnection(Socket socket)
     {
         this.socket = socket;

@@ -8,6 +8,11 @@ public interface IConnection : IDisposable
 {
     bool Connected { get; }
 
+    /// <summary>How long a read may wait for the console (ms); 0 restores the default.</summary>
+    void SetReadTimeout(int ms)
+    {
+    }
+
     void WriteCommand(int cmd)
     {
         WriteByte(cmd);

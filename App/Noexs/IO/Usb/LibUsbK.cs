@@ -201,6 +201,7 @@ public sealed class LibUsbKConnection : BulkConnection
                 {
                     throw new UsbException("The USB device has no bulk IN/OUT endpoints");
                 }
+                DiscardStaleData(handle, pipeIn);
                 LibUsbK.SetTimeout(handle, pipeIn, TimeoutMs);
                 LibUsbK.SetTimeout(handle, pipeOut, TimeoutMs);
                 return new LibUsbKConnection(handle, pipeIn, pipeOut);
@@ -214,6 +215,31 @@ public sealed class LibUsbKConnection : BulkConnection
         finally
         {
             LibUsbK.LstK_Free(list);
+        }
+    }
+
+    /// <summary>
+    /// USB has no connection that closes: if an earlier session ended while the sysmodule was still
+    /// sending (cable pulled, App closed during a dump, a request timed out), that data is still
+    /// pending and the sysmodule waits until the PC reads it. Read and discard it, so the sysmodule
+    /// is free again and the next reply isn't mixed up with old bytes.
+    /// </summary>
+    private static unsafe void DiscardStaleData(IntPtr handle, byte pipeIn)
+    {
+        LibUsbK.SetTimeout(handle, pipeIn, 250);
+        byte[] buffer = new byte[ReadTransferSize];
+        long discarded = 0;
+        fixed (byte* p = buffer)
+        {
+            // at most ~256 MiB (a whole interrupted dump chunk is far less)
+            for (int i = 0; i < 4096 && LibUsbK.UsbK_ReadPipe(handle, pipeIn, p, (uint)buffer.Length, out uint n, IntPtr.Zero) && n > 0; i++)
+            {
+                discarded += n;
+            }
+        }
+        if (discarded > 0)
+        {
+            Util.Log.Info($"usb: discarded {discarded} bytes left over from an earlier session");
         }
     }
 
@@ -242,6 +268,14 @@ public sealed class LibUsbKConnection : BulkConnection
     }
 
     protected override bool IsOpen => handle != IntPtr.Zero;
+
+    protected override void SetInTimeout(int ms)
+    {
+        if (handle != IntPtr.Zero)
+        {
+            LibUsbK.SetTimeout(handle, pipeIn, (uint)ms);
+        }
+    }
 
     protected override unsafe int TransferIn(byte[] buf, int off, int len)
     {

@@ -35,6 +35,16 @@ public abstract class BulkConnection : IConnection
 
     protected abstract void Close();
 
+    /// <summary>Sets the IN pipe timeout (ms) of the underlying device.</summary>
+    protected virtual void SetInTimeout(int ms)
+    {
+    }
+
+    public void SetReadTimeout(int ms)
+    {
+        SetInTimeout(ms > 0 ? ms : TimeoutMs);
+    }
+
     public bool Connected => !broken && IsOpen;
 
     private ConnectionException Broken(Exception e)

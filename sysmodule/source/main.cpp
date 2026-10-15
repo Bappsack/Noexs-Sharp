@@ -352,7 +352,9 @@ static void serveSession(Gecko::Transport& conn, int firstCmd) {
         Result rc = cmd_decode(ctx, cmd);
         pumpDebugEvents();
         mutexUnlock(&g_Shared.lock);
-        if (rc == MAKERESULT(Module_TCPGecko, TCPGeckoError_iofail) || !conn.connected()) {
+        // after the disconnect command, stop before reading on: over USB nothing closes, so the read
+        // would take the next client's first command (its status request) and drop it with this session
+        if (rc == MAKERESULT(Module_TCPGecko, TCPGeckoError_iofail) || !conn.connected() || ctx.stop) {
             break;
         }
         cmd = conn.read(); // blocks (with our output already flushed)

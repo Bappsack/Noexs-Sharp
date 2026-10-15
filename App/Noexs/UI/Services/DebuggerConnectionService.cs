@@ -31,13 +31,46 @@ public sealed class DebuggerConnectionService : BackgroundService<IConnection>
                 : "Connecting to:" + host + ":" + port + " (Attempt:" + (attempt + 1) + "/" + MaximumFailureCount + ")");
             try
             {
-                return type == ConnectionType.USB ? UsbUtils.OpenSwitch() : Connect(ctx.Token);
+                IConnection c = type == ConnectionType.USB ? UsbUtils.OpenSwitch() : Connect(ctx.Token);
+                Handshake(c);
+                return c;
             }
             catch (Exception) when (attempt < MaximumFailureCount - 1 && !ctx.IsCancelled)
             {
                 // retry (the console may still be booting / the cable just got plugged in)
                 Thread.Sleep(type == ConnectionType.USB ? 500 : 0);
                 continue;
+            }
+        }
+    }
+
+    /// <summary>
+    /// First status request here in the background, with a short timeout: a console that doesn't
+    /// answer (asleep, sysmodule busy) means another attempt instead of a frozen window. A version
+    /// mismatch is left to the main window, which reports it.
+    /// </summary>
+    private static void Handshake(IConnection c)
+    {
+        var probe = new Debugger(c);
+        try
+        {
+            c.SetReadTimeout(5000);
+            probe.GetStatus();
+        }
+        catch (ConnectionException) when (probe.ServerVersion != null)
+        {
+            // answered, but with another version
+        }
+        catch
+        {
+            c.Dispose();
+            throw;
+        }
+        finally
+        {
+            if (c.Connected)
+            {
+                c.SetReadTimeout(0);
             }
         }
     }
