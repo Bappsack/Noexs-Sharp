@@ -1,0 +1,87 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Noexs.UI.Controls"
+             xmlns:m="using:Noexs.UI.Models"
+             x:Class="Noexs.UI.Views.MemoryViewerTab"
+             Width="1022" Height="470">
+    <UserControl.Styles>
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Padding" Value="2,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="DataGridCell">
+            <Setter Property="Padding" Value="0" />
+        </Style>
+    </UserControl.Styles>
+    <Canvas>
+        <DataGrid x:Name="memViewTable" Canvas.Left="196" Canvas.Top="11" Width="790" Height="448"
+                  x:DataType="m:MemoryViewerTableModel"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                  CanUserReorderColumns="False" CanUserSortColumns="False" CanUserResizeColumns="False"
+                  GridLinesVisibility="All" HeadersVisibility="Column" RowHeight="20">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="FFFFFFFFFF" Binding="{Binding AddrText}" Width="75" />
+                <DataGridTextColumn Header="00010203" Binding="{Binding Value1Text}" Width="75" />
+                <DataGridTextColumn Header="04050607" Binding="{Binding Value2Text}" Width="75" />
+                <DataGridTextColumn Header="08090A0B" Binding="{Binding Value3Text}" Width="75" />
+                <DataGridTextColumn Header="0C0D0E0F" Binding="{Binding Value4Text}" Width="75" />
+                <DataGridTextColumn Header="00" Binding="{Binding Ascii00}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="01" Binding="{Binding Ascii01}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="02" Binding="{Binding Ascii02}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="03" Binding="{Binding Ascii03}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="04" Binding="{Binding Ascii04}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="05" Binding="{Binding Ascii05}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="06" Binding="{Binding Ascii06}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="07" Binding="{Binding Ascii07}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="08" Binding="{Binding Ascii08}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="09" Binding="{Binding Ascii09}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="0A" Binding="{Binding Ascii0A}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="0B" Binding="{Binding Ascii0B}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="0C" Binding="{Binding Ascii0C}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="0D" Binding="{Binding Ascii0D}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="0E" Binding="{Binding Ascii0E}" Width="24" FontFamily="Courier New" />
+                <DataGridTextColumn Header="0F" Binding="{Binding Ascii0F}" Width="24" FontFamily="Courier New" />
+            </DataGrid.Columns>
+        </DataGrid>
+        <TextBlock Canvas.Left="14" Canvas.Top="23" Text="Address" />
+        <c:AddressSpinner x:Name="memViewAddrBox" Canvas.Left="14" Canvas.Top="40" Width="168" Height="25" />
+        <CheckBox x:Name="refreshCheckbox" Canvas.Left="15" Canvas.Top="69" Content="Auto Refresh" />
+        <Button Canvas.Left="112" Canvas.Top="148" Width="71" Height="25" Content="Poke" Click="OnPokeAction" />
+        <c:HexSpinner x:Name="pokeValue" Canvas.Left="14" Canvas.Top="113" Width="168" Height="25" />
+        <ComboBox x:Name="pokeType" Canvas.Left="15" Canvas.Top="148" Width="90" Height="25" />
+        <Button Canvas.Left="993" Canvas.Top="19" Width="22" Height="25" Padding="0" Click="MemViewerUpBig"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+            <StackPanel Spacing="1">
+                <Rectangle Height="1.5" Width="10" Fill="{Binding $parent[Button].Foreground}" />
+                <Path Data="M0,7 L5,1 L10,7 Z" Fill="{Binding $parent[Button].Foreground}" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Button>
+        <Button Canvas.Left="993" Canvas.Top="53" Width="22" Height="25" Padding="0" Click="MemViewerUp"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+            <Path Data="M0,7 L5,1 L10,7 Z" Fill="{Binding $parent[Button].Foreground}" HorizontalAlignment="Center" />
+        </Button>
+        <Button Canvas.Left="993" Canvas.Top="385" Width="22" Height="25" Padding="0" Click="MemViewerDown"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+            <Path Data="M0,1 L5,7 L10,1 Z" Fill="{Binding $parent[Button].Foreground}" HorizontalAlignment="Center" />
+        </Button>
+        <Button Canvas.Left="993" Canvas.Top="422" Width="22" Height="25" Padding="0" Click="MemViewerDownBig"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+            <StackPanel Spacing="1">
+                <Path Data="M0,1 L5,7 L10,1 Z" Fill="{Binding $parent[Button].Foreground}" HorizontalAlignment="Center" />
+                <Rectangle Height="1.5" Width="10" Fill="{Binding $parent[Button].Foreground}" />
+            </StackPanel>
+        </Button>
+        <Button Canvas.Left="127" Canvas.Top="66" Height="25" Content="Update" Click="UpdateMemoryViewer" />
+        <CheckBox x:Name="endianCheckbox" Canvas.Left="13" Canvas.Top="439" Content="Switch Endianess" />
+        <Button Canvas.Left="14" Canvas.Top="360" Width="168" Height="25" IsEnabled="False" Content="Upload..." />
+        <TextBlock Canvas.Left="16" Canvas.Top="275" IsEnabled="False" Text="Size" Opacity="0.5" />
+        <c:HexSpinner x:Name="downSize" Canvas.Left="13" Canvas.Top="292" Width="168" Height="25" IsEnabled="False" />
+        <Button Canvas.Left="14" Canvas.Top="324" Width="168" Height="25" IsEnabled="False" Content="Download..." />
+        <TextBox x:Name="patternTextField" Canvas.Left="11" Canvas.Top="197" Width="168" Height="25"
+                 Watermark="Pattern" VerticalContentAlignment="Center" />
+        <Button Canvas.Left="112" Canvas.Top="232" Width="71" Height="25" Content="Search" Click="OnPatternSearch" />
+        <Separator Canvas.Left="11" Canvas.Top="182" Width="168" />
+        <Separator Canvas.Left="11" Canvas.Top="267" Width="168" />
+        <Separator Canvas.Left="13" Canvas.Top="99" Width="168" />
+    </Canvas>
+</UserControl>

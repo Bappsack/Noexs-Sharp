@@ -1,0 +1,104 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Noexs.UI.Controls"
+             xmlns:m="using:Noexs.UI.Models"
+             x:Class="Noexs.UI.Views.PointerSearchTab"
+             Width="1022" Height="470">
+    <!-- Pointer search based on PointerSearcher by Takumi4685 (MIT) -->
+    <UserControl.Styles>
+        <Style Selector="DataGrid#dumpRows DataGridCell">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+    </UserControl.Styles>
+    <Canvas>
+        <DataGrid x:Name="dumpRows" Canvas.Left="14" Canvas.Top="10" Width="994" Height="122"
+                  x:DataType="m:PointerDumpRow"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                  CanUserReorderColumns="False" CanUserSortColumns="False"
+                  GridLinesVisibility="All" HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="Dump File" Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:PointerDumpRow">
+                            <DockPanel Margin="4,0,2,0" HorizontalAlignment="Stretch">
+                                <Button DockPanel.Dock="Right" Classes="browse" Content="…" Width="26" Height="20"
+                                        Padding="0" ToolTip.Tip="Choose a Noexes dump (.dmp)" />
+                                <TextBlock Text="{Binding FileName}" ToolTip.Tip="{Binding File}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Main Start" Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:PointerDumpRow">
+                            <TextBox Classes="cell" Text="{Binding MainStart}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Main End" Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:PointerDumpRow">
+                            <TextBox Classes="cell" Text="{Binding MainEnd}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Heap Start" Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:PointerDumpRow">
+                            <TextBox Classes="cell" Text="{Binding HeapStart}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Heap End" Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:PointerDumpRow">
+                            <TextBox Classes="cell" Text="{Binding HeapEnd}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Target Address" Width="120">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:PointerDumpRow">
+                            <TextBox Classes="cell" Text="{Binding Target}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+        <Button Canvas.Left="14" Canvas.Top="138" Height="25" Content="Add Dump Row" Click="OnAddRow" />
+        <Button x:Name="removeRowButton" Canvas.Left="120" Canvas.Top="138" Height="25" Content="Remove Row" Click="OnRemoveRow" />
+        <Button Canvas.Left="210" Canvas.Top="138" Height="25" Content="Fill Main/Heap from Process" Click="OnFillFromProcess"
+                ToolTip.Tip="Fill the selected row's ranges from the attached process" />
+        <Button x:Name="fromSearchButton" Canvas.Left="392" Canvas.Top="138" Height="25" Content="From Search ▾" Click="OnFromSearch"
+                ToolTip.Tip="Use a dump created by the Search tab for the selected row (row 1 if none)" />
+        <TextBlock Canvas.Left="500" Canvas.Top="144" Opacity="0.75"
+                   Text="Row 1 is searched; more rows narrow it down (target 0 = must reach heap)." />
+
+        <c:TitledPane Canvas.Left="14" Canvas.Top="170" Width="330" Height="114" Header="Search Options">
+            <Canvas>
+                <TextBlock Canvas.Left="10" Canvas.Top="9" Text="Max Depth:" />
+                <c:IntSpinner x:Name="depthSpinner" Canvas.Left="95" Canvas.Top="4" Width="120" Height="23" Minimum="1" Maximum="20" />
+                <TextBlock Canvas.Left="10" Canvas.Top="36" Text="Offset Range:" />
+                <c:HexSpinner x:Name="offsetRangeSpinner" Canvas.Left="95" Canvas.Top="31" Width="120" Height="23" />
+                <TextBlock Canvas.Left="10" Canvas.Top="63" Text="Offset Num:" />
+                <c:IntSpinner x:Name="offsetNumSpinner" Canvas.Left="95" Canvas.Top="58" Width="120" Height="23" Minimum="1" Maximum="64" />
+            </Canvas>
+        </c:TitledPane>
+
+        <Button x:Name="readButton" Canvas.Left="356" Canvas.Top="172" Width="170" Height="30" Content="Read 1st Dump Data" Click="OnRead" />
+        <Button x:Name="searchButton" Canvas.Left="356" Canvas.Top="208" Width="170" Height="30" Content="Reset and Search" IsEnabled="False" Click="OnSearch" />
+        <Button x:Name="narrowButton" Canvas.Left="536" Canvas.Top="172" Width="170" Height="30" Content="Narrow Down Result" IsEnabled="False" Click="OnNarrowDown" />
+        <Button x:Name="cancelButton" Canvas.Left="536" Canvas.Top="208" Width="170" Height="30" Content="Cancel" IsEnabled="False" Click="OnCancel" />
+        <TextBlock x:Name="infoLabel" Canvas.Left="356" Canvas.Top="250" Width="650" TextTrimming="CharacterEllipsis" Text="Read the 1st dump to start." />
+
+        <ListBox x:Name="resultList" Canvas.Left="14" Canvas.Top="292" Width="994" Height="138" />
+        <TextBox x:Name="resultText" Canvas.Left="14" Canvas.Top="438" Width="520" Height="25" IsReadOnly="True"
+                 VerticalContentAlignment="Center" />
+        <Button Canvas.Left="542" Canvas.Top="438" Height="25" Content="Copy" Click="OnCopy" />
+        <Button Canvas.Left="596" Canvas.Top="438" Height="25" Content="Add to Watch List" Click="OnAddToWatchlist" />
+        <Button Canvas.Left="716" Canvas.Top="438" Height="25" Content="Memory Viewer" Click="OnMemoryViewer" />
+        <Button Canvas.Left="828" Canvas.Top="438" Height="25" Content="Create Signature" Click="OnCreateSignature"
+                ToolTip.Tip="Signature for the code that uses this path's main base, to find it again after a game update" />
+    </Canvas>
+</UserControl>

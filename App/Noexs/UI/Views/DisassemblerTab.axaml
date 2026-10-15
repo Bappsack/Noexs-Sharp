@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Noexs.UI.Controls"
+             x:Class="Noexs.UI.Views.DisassemblerTab"
+             Width="1022" Height="470">
+    <Canvas>
+        <ListBox x:Name="instructionList" Canvas.Left="283" Canvas.Top="13" Width="729" Height="445" />
+        <c:TitledPane x:Name="visiblePane" Canvas.Left="14" Canvas.Top="14" Width="257" Height="80"
+                      Header="VIsible Address" IsEnabled="False">
+            <Canvas>
+                <c:AddressSpinner x:Name="visibleAddress" Canvas.Left="14" Canvas.Top="14" Width="149" Height="25" />
+                <Button x:Name="updateButton" Canvas.Left="173" Canvas.Top="15" Width="68" Height="25" Content="Update" Click="Update" />
+            </Canvas>
+        </c:TitledPane>
+        <c:TitledPane x:Name="selectedPane" Canvas.Left="14" Canvas.Top="105" Width="257" Height="113"
+                      Header="Selected Address" IsEnabled="False">
+            <Canvas>
+                <c:AddressSpinner x:Name="selectedAddress" Canvas.Left="14" Canvas.Top="14" Width="149" Height="25" />
+                <Button x:Name="assembleButton" Canvas.Left="174" Canvas.Top="14" Height="25" Content="Assemble" Click="AssembleOp" />
+                <TextBox x:Name="selectedOp" Canvas.Left="14" Canvas.Top="49" Width="232" Height="25" VerticalContentAlignment="Center" />
+            </Canvas>
+        </c:TitledPane>
+        <c:TitledPane x:Name="callstackPane" Canvas.Left="14" Canvas.Top="224" Width="257" Height="238"
+                      Header="Call Stack" IsEnabled="False">
+            <Canvas>
+                <ListBox x:Name="stackList" Canvas.Left="9" Canvas.Top="13" Width="239" Height="187" />
+            </Canvas>
+        </c:TitledPane>
+    </Canvas>
+</UserControl>

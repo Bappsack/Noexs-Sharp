@@ -1,0 +1,135 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: App (${{ matrix.rid }})
+    # Native AOT can't cross-compile between operating systems, so every OS builds on its own
+    # runner; Windows and macOS cross-compile their second architecture.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+          - rid: win-arm64
+            os: windows-latest
+          - rid: linux-x64
+            os: ubuntu-latest
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+          - rid: osx-arm64
+            os: macos-latest
+          - rid: osx-x64
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Native AOT on Linux links with clang and needs the zlib headers
+      - name: Linux build tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+
+      - name: Publish single-file executable
+        run: dotnet publish App/Noexs -c Release -r ${{ matrix.rid }} -o App/publish
+
+      # Windows: zip with noexs.exe; Linux/macOS: tar.gz, which keeps the executable permission
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path App/publish/noexs.exe -DestinationPath noexs-app-${{ matrix.rid }}.zip
+
+      - name: Package (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: tar -czf noexs-app-${{ matrix.rid }}.tar.gz -C App/publish noexs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noexs-app-${{ matrix.rid }}
+          path: noexs-app-${{ matrix.rid }}.*
+          if-no-files-found: error
+
+  sysmodule:
+    name: Sysmodule (devkitPro)
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make -C sysmodule
+
+      # out/ is the SD card layout: atmosphere/contents/4200000000004E58/{exefs.nsp,flags/boot2.flag,toolbox.json}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noexs-sysmodule
+          path: sysmodule/out/
+          if-no-files-found: error
+
+  # A release for every push to main (tag v<version>-build.<run number>, e.g. v2.0.1-build.42,
+  # marked as pre-release) and a regular release for pushed v* tags. A main commit that already
+  # carries a v* tag gets only that regular release. Pull requests only build.
+  release:
+    name: Release
+    if: github.event_name == 'push'
+    needs: [app, sysmodule]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Release name
+        id: meta
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "name=noexs ${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --tags origin 'refs/tags/v*' | grep -q "^${GITHUB_SHA}"; then
+            # tagged release commit: its tag run publishes the release
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' App/Noexs/Noexs.csproj)
+            short=${GITHUB_SHA::7}
+            echo "tag=v${version}-build.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+            echo "name=noexs ${version} build ${GITHUB_RUN_NUMBER} (${short})" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: steps.meta.outputs.skip != 'true'
+        with:
+          path: artifacts
+
+      - name: Package
+        if: steps.meta.outputs.skip != 'true'
+        run: |
+          mkdir release
+          cp artifacts/noexs-app-*/noexs-app-* release/
+          (cd artifacts/noexs-sysmodule && zip -r ../../release/noexs-sysmodule.zip atmosphere)
+          ls -l release
+
+      - uses: softprops/action-gh-release@v2
+        if: steps.meta.outputs.skip != 'true'
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          generate_release_notes: true
+          files: release/*

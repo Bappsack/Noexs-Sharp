@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Noexs.UI.Controls"
+             xmlns:m="using:Noexs.UI.Models"
+             x:Class="Noexs.UI.Views.SearchTab"
+             Width="1022" Height="470">
+    <Canvas>
+        <DataGrid x:Name="searchResults" Canvas.Left="536" Canvas.Top="20" Width="480" Height="406"
+                  x:DataType="m:SearchValueModel"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended"
+                  CanUserReorderColumns="False" CanUserSortColumns="False"
+                  GridLinesVisibility="All" HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Address" Binding="{Binding AddrText}" Width="120" />
+                <DataGridTextColumn Header="Old" Binding="{Binding OldText}" Width="120" />
+                <DataGridTextColumn Header="New" Binding="{Binding NewText}" Width="110" />
+                <DataGridTextColumn Header="Diff" Binding="{Binding DiffText}" Width="*" />
+            </DataGrid.Columns>
+        </DataGrid>
+        <c:TitledPane x:Name="searchOptions" Canvas.Left="14" Canvas.Top="20" Width="518" Height="228" Header="Search Options">
+            <Canvas>
+                <ComboBox x:Name="searchType" Canvas.Left="18" Canvas.Top="31" Width="149" Height="25" PlaceholderText="Range" />
+                <c:AddressSpinner x:Name="searchStart" Canvas.Left="174" Canvas.Top="31" Width="149" Height="25" />
+                <TextBlock Canvas.Left="18" Canvas.Top="14" Text="Search Type" />
+                <TextBlock Canvas.Left="174" Canvas.Top="14" Text="Start" />
+                <c:AddressSpinner x:Name="searchEnd" Canvas.Left="332" Canvas.Top="31" Width="149" Height="25" />
+                <TextBlock Canvas.Left="336" Canvas.Top="14" Text="End" />
+                <ComboBox x:Name="dataTypeDropdown" Canvas.Left="21" Canvas.Top="88" Width="130" Height="25" />
+                <Separator Canvas.Left="0" Canvas.Top="66" Width="516" />
+                <TextBlock Canvas.Left="21" Canvas.Top="72" Text="Data Type" />
+                <ComboBox x:Name="searchConditionTypeDropdown" Canvas.Left="21" Canvas.Top="134" Width="130" Height="25" />
+                <TextBlock Canvas.Left="21" Canvas.Top="118" Text="Search Condition" />
+                <ComboBox x:Name="searchConditionDropdown" Canvas.Left="21" Canvas.Top="164" Width="130" Height="25" />
+                <c:HexSpinner x:Name="knownValue" Canvas.Left="321" Canvas.Top="89" Width="149" Height="25" />
+                <TextBlock Canvas.Left="321" Canvas.Top="72" Text="Value" />
+                <Button Canvas.Left="320" Canvas.Top="121" Width="149" Height="25" Content="Convert Decimal to Hex" Click="ConvertToHex" />
+                <TextBlock x:Name="conditionLabel" Canvas.Left="160" Canvas.Top="170" />
+            </Canvas>
+        </c:TitledPane>
+        <Button Canvas.Left="26" Canvas.Top="260" Width="120" Height="39" Content="Search" Click="OnStartAction" />
+        <Button Canvas.Left="151" Canvas.Top="260" Width="120" Height="39" Content="Cancel Search" Click="OnCancelAction" />
+        <Button Canvas.Left="401" Canvas.Top="260" Width="120" Height="39" Content="Restart Search" Click="OnRestartAction" />
+        <Button Canvas.Left="276" Canvas.Top="260" Width="120" Height="39" Content="Undo Search" Click="OnUndoAction" />
+        <TextBlock Canvas.Left="760" Canvas.Top="439" Text="Value:" />
+        <c:HexSpinner x:Name="pokeValue" Canvas.Left="795" Canvas.Top="433" Width="149" Height="25" />
+        <Button Canvas.Left="956" Canvas.Top="433" Width="60" Height="25" Content="Poke" Click="Poke" />
+        <Button x:Name="pageLeft" Canvas.Left="536" Canvas.Top="433" Height="25" IsEnabled="False" Content="←" Click="OnPageLeft" />
+        <Button x:Name="pageRight" Canvas.Left="570" Canvas.Top="433" Height="25" IsEnabled="False" Content="→" Click="OnPageRight" />
+        <TextBlock x:Name="pageLabel" Canvas.Left="604" Canvas.Top="439" Text="Page: 0/0 (0)" />
+    </Canvas>
+</UserControl>

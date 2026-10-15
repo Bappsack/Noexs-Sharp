@@ -1,0 +1,19 @@
+# Project-specific rules are in App/.gitignore (.NET / Visual Studio)
+# and sysmodule/.gitignore (devkitPro / libnx).
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+._*
+
+# Editors
+.vs/
+.vscode/
+.idea/
+*.swp

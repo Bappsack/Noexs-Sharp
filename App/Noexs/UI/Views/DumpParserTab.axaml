@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Noexs.UI.Controls"
+             xmlns:m="using:Noexs.UI.Models"
+             x:Class="Noexs.UI.Views.DumpParserTab"
+             Width="1022" Height="470">
+    <!-- Offline dump inspection, after NoExesDumpParse by rydoginator -->
+    <Canvas>
+        <TextBlock Canvas.Left="14" Canvas.Top="19" Text="Dump File:" />
+        <TextBox x:Name="dumpPath" Canvas.Left="84" Canvas.Top="13" Width="600" Height="25" IsReadOnly="True"
+                 VerticalContentAlignment="Center" Watermark="Choose a file..." />
+        <Button Canvas.Left="692" Canvas.Top="13" Height="25" Content="Browse" Click="OnBrowse" />
+        <Button x:Name="fromSearchButton" Canvas.Left="752" Canvas.Top="13" Height="25" Content="From Search ▾" Click="OnFromSearch"
+                ToolTip.Tip="Open a dump created by the Search tab" />
+        <Button Canvas.Left="856" Canvas.Top="13" Height="25" Width="80" Content="Analyze" Click="OnAnalyze" />
+        <TextBlock x:Name="dumpInfo" Canvas.Left="84" Canvas.Top="-2" Width="900" TextTrimming="CharacterEllipsis" Opacity="0.75" FontSize="10" />
+
+        <TextBlock Canvas.Left="14" Canvas.Top="55" Text="Main Start" />
+        <c:AddressSpinner x:Name="mainStart" Canvas.Left="84" Canvas.Top="49" Width="150" Height="25" />
+        <TextBlock Canvas.Left="250" Canvas.Top="55" Text="Main End" />
+        <c:AddressSpinner x:Name="mainEnd" Canvas.Left="312" Canvas.Top="49" Width="150" Height="25" />
+        <TextBlock Canvas.Left="486" Canvas.Top="55" Text="Heap Start" />
+        <c:AddressSpinner x:Name="heapStart" Canvas.Left="556" Canvas.Top="49" Width="150" Height="25" />
+        <TextBlock Canvas.Left="722" Canvas.Top="55" Text="Heap End" />
+        <c:AddressSpinner x:Name="heapEnd" Canvas.Left="782" Canvas.Top="49" Width="150" Height="25" />
+
+        <DataGrid x:Name="regionGrid" Canvas.Left="14" Canvas.Top="84" Width="994" Height="290"
+                  x:DataType="m:DumpRegionRow"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                  CanUserReorderColumns="False" CanUserSortColumns="False"
+                  GridLinesVisibility="All" HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="RAM Start" Binding="{Binding RamStart}" Width="*" />
+                <DataGridTextColumn Header="RAM End" Binding="{Binding RamEnd}" Width="*" />
+                <DataGridTextColumn Header="Region" Binding="{Binding Region}" Width="*" />
+                <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="*" />
+                <DataGridTextColumn Header="File Position" Binding="{Binding FilePosText}" Width="*" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <TextBlock Canvas.Left="14" Canvas.Top="390" Text="Expression" />
+        <TextBox x:Name="expression" Canvas.Left="94" Canvas.Top="384" Width="440" Height="25"
+                 VerticalContentAlignment="Center" Watermark="[[main+12345]+90]+23" />
+        <Button Canvas.Left="542" Canvas.Top="384" Width="63" Height="25" Content="Parse" Click="OnParse" />
+        <TextBox x:Name="result" Canvas.Left="613" Canvas.Top="384" Width="200" Height="25" IsReadOnly="True"
+                 VerticalContentAlignment="Center" />
+
+        <TextBlock Canvas.Left="14" Canvas.Top="428" Text="Game Offset" />
+        <TextBox x:Name="gameOffset" Canvas.Left="94" Canvas.Top="422" Width="200" Height="25" VerticalContentAlignment="Center" />
+        <TextBlock Canvas.Left="310" Canvas.Top="428" Text="File Offset" />
+        <TextBox x:Name="fileOffset" Canvas.Left="378" Canvas.Top="422" Width="200" Height="25" VerticalContentAlignment="Center" />
+        <TextBlock x:Name="offsetInfo" Canvas.Left="590" Canvas.Top="428" Opacity="0.75" />
+    </Canvas>
+</UserControl>

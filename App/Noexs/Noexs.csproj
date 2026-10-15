@@ -1,0 +1,89 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>noexs</AssemblyName>
+    <RootNamespace>Noexs</RootNamespace>
+    <Version>2.0.1</Version>
+    <Description>A graphical remote debugger for the Nintendo Switch</Description>
+
+    <!-- Avalonia: compiled bindings everywhere so nothing relies on reflection -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+
+    <!-- Native AOT -->
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <!-- default to Windows x64 so a bare "dotnet publish" produces the single exe -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(_IsPublishing)' == 'true'">win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <!-- Publish output is a single file: no .pdb next to the exe -->
+  <PropertyGroup Condition="'$(_IsPublishing)' == 'true'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+    <EmbedNativeLibraries Condition="'$(EmbedNativeLibraries)' == ''">true</EmbedNativeLibraries>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <!-- switchbrew Title_list / Title_list/Games snapshots (wikitext) for naming processes -->
+  <ItemGroup>
+    <EmbeddedResource Include="Data\games.wiki.gz" LogicalName="titles/games.wiki.gz" />
+    <EmbeddedResource Include="Data\titles.wiki.gz" LogicalName="titles/titles.wiki.gz" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.13" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.13" />
+    <PackageReference Include="Avalonia.Themes.Simple" Version="11.3.13" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.13" />
+    <!-- only for its native capstone libraries (bound directly in Util/Capstone.cs) -->
+    <PackageReference Include="Gee.External.Capstone" Version="2.3.0" />
+    <!-- transitive via Avalonia.FreeDesktop; 0.21.2 has a known advisory -->
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
+  </ItemGroup>
+
+  <!--
+    Single-file publish: Native AOT links all managed code into the exe, but SkiaSharp, HarfBuzz and
+    ANGLE ship only as native DLLs. They are zipped into the exe as a resource and extracted to
+    %LOCALAPPDATA%\Noexs\native\<hash> on first start (see NativeBootstrap.cs).
+    Extra native libraries (e.g. libusb-1.0.dll) can be dropped into Native\<rid>\ to be embedded too.
+  -->
+  <Target Name="NoexsEmbedNativeLibraries" BeforeTargets="AssignTargetPaths" DependsOnTargets="ResolvePackageAssets"
+          Condition="'$(EmbedNativeLibraries)' == 'true'">
+    <PropertyGroup>
+      <_NoexsNativeDir>$(IntermediateOutputPath)nativepack\</_NoexsNativeDir>
+      <_NoexsNativeZip>$(IntermediateOutputPath)natives.zip</_NoexsNativeZip>
+    </PropertyGroup>
+    <ItemGroup>
+      <_NoexsNative Include="@(NativeCopyLocalItems)" Condition="'%(Extension)' == '.dll' or '%(Extension)' == '.so' or '%(Extension)' == '.dylib'" />
+      <_NoexsNative Include="$(MSBuildProjectDirectory)\Native\$(RuntimeIdentifier)\*.*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(_NoexsNativeDir)" />
+    <Copy SourceFiles="@(_NoexsNative)" DestinationFolder="$(_NoexsNativeDir)" />
+    <ZipDirectory SourceDirectory="$(_NoexsNativeDir)" DestinationFile="$(_NoexsNativeZip)" Overwrite="true" />
+    <ItemGroup>
+      <EmbeddedResource Include="$(_NoexsNativeZip)" LogicalName="natives.zip" />
+      <FileWrites Include="$(_NoexsNativeZip)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- the embedded libraries must not also be copied next to the exe -->
+  <Target Name="NoexsRemoveNativeFromPublish" AfterTargets="ComputeResolvedFilesToPublishList"
+          Condition="'$(EmbedNativeLibraries)' == 'true'">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                             Condition="'%(Extension)' == '.dll' or '%(Extension)' == '.so' or '%(Extension)' == '.dylib' or '%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

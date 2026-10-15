@@ -1,0 +1,27 @@
+# devkitPro / libnx sysmodule build output
+
+# object and dependency files
+build/
+*.o
+*.d
+*.a
+*.map
+*.lst
+
+# Switch binaries produced by make (elf -> nso/npdm -> nsp)
+*.elf
+*.nso
+*.nro
+*.nsp
+*.npdm
+*.nacp
+*.kip
+*.kip1
+*.pfs0
+
+# SD card layout created by make (out/atmosphere/contents/<program_id>/exefs.nsp + flags/boot2.flag)
+out/
+
+# local tools that are not part of the source
+hactool.exe
+hactool

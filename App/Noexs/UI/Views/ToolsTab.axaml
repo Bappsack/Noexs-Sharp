@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Noexs.UI.Controls"
+             xmlns:m="using:Noexs.UI.Models"
+             x:Class="Noexs.UI.Views.ToolsTab"
+             Width="1022" Height="470" IsEnabled="False">
+    <Canvas>
+        <c:TitledPane Canvas.Left="487" Canvas.Top="13" Width="521" Height="402" Header="PID Selection">
+            <Canvas>
+                <ListBox x:Name="pidList" Canvas.Left="5" Canvas.Top="5" Width="266" Height="362" />
+                <Button Canvas.Left="302" Canvas.Top="25" Width="210" Height="25" Content="Refresh Pids" Click="SetPidsList" />
+                <Button Canvas.Left="302" Canvas.Top="55" Width="210" Height="25" Content="Attach to Process" Click="AttachProcess" />
+                <Button Canvas.Left="302" Canvas.Top="88" Width="210" Height="25" Content="Detach from Process" Click="DetachProcess" />
+                <TextBlock x:Name="toolsTitleId" Canvas.Left="302" Canvas.Top="126" Width="205" TextWrapping="Wrap" Text="Title Id:" />
+                <Button x:Name="updateTitlesButton" Canvas.Left="302" Canvas.Top="330" Width="210" Height="25"
+                        Content="Update Game Names" Click="OnUpdateTitles"
+                        ToolTip.Tip="Download the current title lists from switchbrew.org (a snapshot is built in)" />
+            </Canvas>
+        </c:TitledPane>
+        <DataGrid x:Name="memInfoTable" Canvas.Left="23" Canvas.Top="14" Width="442" Height="402"
+                  x:DataType="m:MemoryInfoTableModel"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                  CanUserReorderColumns="False" CanUserSortColumns="False"
+                  GridLinesVisibility="All" HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="65" />
+                <DataGridTextColumn Header="Address" Binding="{Binding AddrText}" Width="90" />
+                <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="100" />
+                <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="*" />
+                <DataGridTextColumn Header="Access" Binding="{Binding AccessText}" Width="55" />
+            </DataGrid.Columns>
+        </DataGrid>
+        <TextBlock Canvas.Left="23" Canvas.Top="431" Text="Expression:" />
+        <TextBox x:Name="expression" Canvas.Left="89" Canvas.Top="425" Width="333" Height="25" VerticalContentAlignment="Center" />
+        <Button Canvas.Left="435" Canvas.Top="425" Height="25" Content="Parse" Click="OnParse" />
+        <TextBox x:Name="expressionResult" Canvas.Left="487" Canvas.Top="425" Width="149" Height="25"
+                 IsReadOnly="True" VerticalContentAlignment="Center" />
+    </Canvas>
+</UserControl>

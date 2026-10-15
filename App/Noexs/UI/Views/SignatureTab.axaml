@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Noexs.UI.Controls"
+             x:Class="Noexs.UI.Views.SignatureTab"
+             Width="1022" Height="470">
+    <Canvas>
+        <c:TitledPane x:Name="createPane" Canvas.Left="14" Canvas.Top="14" Width="494" Height="447"
+                      Header="Create Signature" IsEnabled="False">
+            <Canvas>
+                <TextBlock Canvas.Left="14" Canvas.Top="18" Text="Address" />
+                <TextBox x:Name="createAddress" Canvas.Left="66" Canvas.Top="14" Width="149" Height="25"
+                         VerticalContentAlignment="Center" FontFamily="Consolas,Menlo,monospace"
+                         ToolTip.Tip="An address (code, a global in main, or heap, e.g. 72B8CD9000) or a pointer path such as [[[[main+4741FA0]+198]+30]+9D0]" />
+                <TextBlock Canvas.Left="226" Canvas.Top="18" Text="Max instr." />
+                <c:IntSpinner x:Name="maxInstructions" Canvas.Left="290" Canvas.Top="14" Width="70" Height="25"
+                              Minimum="4" Maximum="64"
+                              ToolTip.Tip="The signature grows up to this many instructions until it is unique" />
+                <Button x:Name="createButton" Canvas.Left="370" Canvas.Top="14" Width="106" Height="25"
+                        Content="Create" HorizontalContentAlignment="Center" Click="OnCreate" />
+                <TextBlock x:Name="createWhere" Canvas.Left="14" Canvas.Top="46" Width="462"
+                           TextTrimming="CharacterEllipsis" />
+                <ComboBox x:Name="candidateBox" Canvas.Left="14" Canvas.Top="66" Width="462" Height="25"
+                          IsEnabled="False" FontSize="12"
+                          ToolTip.Tip="Each entry is one instruction that uses the address; pick another if the first isn't unique" />
+                <TextBox x:Name="createdSignature" Canvas.Left="14" Canvas.Top="98" Width="462" Height="52"
+                         IsReadOnly="True" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" />
+                <TextBlock x:Name="createInfo" Canvas.Left="14" Canvas.Top="155" Width="462" Height="34"
+                           TextWrapping="Wrap" FontSize="12" />
+                <Button Canvas.Left="14" Canvas.Top="192" Width="140" Height="25" Content="Copy Signature"
+                        HorizontalContentAlignment="Center" Click="OnCopySignature" />
+                <Button Canvas.Left="162" Canvas.Top="192" Width="140" Height="25" Content="Copy Recipe"
+                        HorizontalContentAlignment="Center" Click="OnCopyRecipe"
+                        ToolTip.Tip="Signature, target offset and path in one line; paste it into Find later" />
+                <Button Canvas.Left="310" Canvas.Top="192" Width="166" Height="25" Content="Use in Find  →"
+                        HorizontalContentAlignment="Center" Click="OnUseInFind" />
+                <ListBox x:Name="createDetails" Canvas.Left="14" Canvas.Top="224" Width="462" Height="185"
+                         FontFamily="Consolas,Menlo,monospace" FontSize="12" />
+            </Canvas>
+        </c:TitledPane>
+        <c:TitledPane x:Name="findPane" Canvas.Left="516" Canvas.Top="14" Width="494" Height="447"
+                      Header="Find Signature" IsEnabled="False">
+            <Canvas>
+                <TextBlock Canvas.Left="14" Canvas.Top="14" Text="Signature (hex bytes, ?? = wildcard) or a copied recipe" />
+                <TextBox x:Name="findSignature" Canvas.Left="14" Canvas.Top="33" Width="462" Height="66"
+                         TextWrapping="Wrap" AcceptsReturn="False" FontFamily="Consolas,Menlo,monospace" />
+                <TextBlock Canvas.Left="14" Canvas.Top="113" Text="Module" />
+                <ComboBox x:Name="findModule" Canvas.Left="66" Canvas.Top="108" Width="110" Height="25"
+                          ToolTip.Tip="Code region to scan; Refresh after attaching to another game" />
+                <TextBlock Canvas.Left="188" Canvas.Top="113" Text="Target offset" />
+                <TextBox x:Name="findOffset" Canvas.Left="270" Canvas.Top="108" Width="90" Height="25"
+                         Text="0" VerticalContentAlignment="Center"
+                         ToolTip.Tip="Hex offset of the wanted instruction from the signature start (shown when the signature was created)" />
+                <Button x:Name="findButton" Canvas.Left="370" Canvas.Top="108" Width="106" Height="25"
+                        Content="Find" HorizontalContentAlignment="Center" Click="OnFind" />
+                <TextBlock Canvas.Left="14" Canvas.Top="147" Text="Path" />
+                <TextBox x:Name="findPath" Canvas.Left="66" Canvas.Top="142" Width="410" Height="25"
+                         VerticalContentAlignment="Center" FontFamily="Consolas,Menlo,monospace"
+                         ToolTip.Tip="How to get from the address the target instruction computes (ref) to yours, e.g. [ref+8]+10. Empty = the instruction itself." />
+                <TextBlock x:Name="findInfo" Canvas.Left="14" Canvas.Top="175" Width="462" Text="" TextWrapping="Wrap" />
+                <ListBox x:Name="findResults" Canvas.Left="14" Canvas.Top="197" Width="462" Height="212"
+                         FontFamily="Consolas,Menlo,monospace" FontSize="12" />
+            </Canvas>
+        </c:TitledPane>
+    </Canvas>
+</UserControl>

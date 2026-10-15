@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:m="using:Noexs.UI.Models"
+             x:Class="Noexs.UI.Views.WatchlistTab"
+             Width="1022" Height="470">
+    <UserControl.Styles>
+        <!-- let the editable TextBox cells fill the whole cell -->
+        <Style Selector="DataGrid#watchlistTable DataGridCell">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+    </UserControl.Styles>
+    <Canvas>
+        <DataGrid x:Name="watchlistTable" Canvas.Left="14" Canvas.Top="14" Width="1000" Height="407"
+                  x:DataType="m:WatchlistModel"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                  CanUserReorderColumns="False" CanUserSortColumns="False"
+                  GridLinesVisibility="All" HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="Update" Width="75">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:WatchlistModel">
+                            <CheckBox IsChecked="{Binding Update}" HorizontalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Locked" Width="75">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:WatchlistModel">
+                            <CheckBox IsChecked="{Binding Locked}" HorizontalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Address" Width="209">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:WatchlistModel">
+                            <TextBox Classes="cell" Text="{Binding Addr, UpdateSourceTrigger=LostFocus}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Description" Width="356">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:WatchlistModel">
+                            <TextBox Classes="cell" Text="{Binding Desc, UpdateSourceTrigger=LostFocus}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Type" Width="109">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:WatchlistModel">
+                            <ComboBox ItemsSource="{x:Static m:DataType.Values}" SelectedItem="{Binding Type}"
+                                      HorizontalAlignment="Stretch" Margin="2,0" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Value" Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="m:WatchlistModel">
+                            <TextBox Classes="cell" Text="{Binding ValueText, UpdateSourceTrigger=LostFocus}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+        <Button x:Name="addButton" Canvas.Left="14" Canvas.Top="431" Height="25" Content="Add" Click="OnAddAction" />
+        <Button x:Name="removeButton" Canvas.Left="62" Canvas.Top="431" Height="25" IsEnabled="False" Content="Remove" Click="OnRemoveAction" />
+        <Button Canvas.Left="966" Canvas.Top="431" Height="25" Content="Load" Click="OnLoad" />
+        <Button Canvas.Left="914" Canvas.Top="431" Height="25" Content="Save" Click="OnSave" />
+        <Button Canvas.Left="131" Canvas.Top="431" Height="25" Content="Clear" Click="ClearList" />
+    </Canvas>
+</UserControl>

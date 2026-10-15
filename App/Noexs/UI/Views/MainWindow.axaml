@@ -1,0 +1,62 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:v="using:Noexs.UI.Views"
+        x:Class="Noexs.UI.Views.MainWindow"
+        Width="1020" Height="570" CanResize="False"
+        WindowStartupLocation="CenterScreen"
+
+        Title="Noexs">
+    <Canvas>
+        <TabControl x:Name="tabs" Canvas.Left="-2" Canvas.Top="-2" Width="1022" Height="491" Padding="0">
+            <TabItem Header="Tools">
+                <v:ToolsTab x:Name="toolsTabPage" />
+            </TabItem>
+            <TabItem Header="Search">
+                <v:SearchTab x:Name="searchTabPage" />
+            </TabItem>
+            <TabItem Header="Pointer Search">
+                <v:PointerSearchTab x:Name="pointerTabPage" />
+            </TabItem>
+            <TabItem Header="Memory Viewer">
+                <v:MemoryViewerTab x:Name="memViewTabPage" />
+            </TabItem>
+            <TabItem Header="Watch List">
+                <v:WatchlistTab x:Name="watchlistTabPage" />
+            </TabItem>
+            <TabItem Header="Disassembler">
+                <v:DisassemblerTab x:Name="disassembleTabPage" />
+            </TabItem>
+            <TabItem Header="Signatures">
+                <v:SignatureTab x:Name="signatureTabPage" />
+            </TabItem>
+            <TabItem Header="Dump Parser">
+                <v:DumpParserTab x:Name="dumpParserTabPage" />
+            </TabItem>
+            <TabItem Header="Utils">
+                <v:UtilsTab x:Name="utilsTabPage" />
+            </TabItem>
+        </TabControl>
+        <Separator Canvas.Top="497" Width="1020" Margin="0" />
+        <Canvas Canvas.Top="495" Width="1020" Height="71">
+            <Button x:Name="connectBtn" Canvas.Left="885" Canvas.Top="39" Width="121" Height="25"
+                    Content="Connect" Click="Connect" HorizontalContentAlignment="Center" />
+            <TextBox x:Name="ipAddr" Canvas.Left="737" Canvas.Top="39" Width="118" Height="25"
+                     VerticalContentAlignment="Center" Text="111.111.111.111" />
+            <Button x:Name="ipHistoryBtn" Canvas.Left="857" Canvas.Top="39" Width="22" Height="25" Padding="0"
+                    Content="▾" HorizontalContentAlignment="Center" Click="ShowHostHistory"
+                    ToolTip.Tip="Recently used addresses (✕ removes one)" />
+            <TextBlock Canvas.Left="737" Canvas.Top="20" Text="IP Address" />
+            <ProgressBar x:Name="progressBar" Canvas.Left="11" Canvas.Top="44" Width="558" Height="17"
+                         Minimum="0" Maximum="1" Value="0" />
+            <TextBlock x:Name="statusLbl" Canvas.Left="14" Canvas.Top="24" Text="Ready" />
+            <TextBlock x:Name="progressLabel" Canvas.Left="575" Canvas.Top="46" Text="0%" />
+            <Button Canvas.Left="357" Canvas.Top="12" Height="25" Content="Pause" Click="PauseGame" />
+            <Button Canvas.Left="411" Canvas.Top="12" Height="25" Content="Resume" Click="ContinueProcess" />
+            <ComboBox x:Name="connectionType" Canvas.Left="622" Canvas.Top="39" Width="107" Height="25" />
+            <CheckBox x:Name="autoResume" Canvas.Left="477" Canvas.Top="15" Content="Auto Resume" />
+            <ToggleButton x:Name="darkMode" Canvas.Left="885" Canvas.Top="8" Width="121" Height="25"
+                          HorizontalContentAlignment="Center" Content="Dark Mode"
+                          ToolTip.Tip="Switch between light and dark theme" />
+        </Canvas>
+    </Canvas>
+</Window>
